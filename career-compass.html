@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>拾級 · 學習歷程與職涯探索</title>
+<style>
+  :root{
+    --bg: oklch(99% 0.002 240);
+    --surface: oklch(100% 0 0);
+    --fg: oklch(18% 0.012 250);
+    --muted: oklch(54% 0.012 250);
+    --border: oklch(92% 0.005 250);
+    --accent: oklch(58% 0.18 255);
+    --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
+    --fg-soft: color-mix(in oklch, var(--fg) 6%, transparent);
+    --ok: oklch(56% 0.13 155);
+    --ok-soft: color-mix(in oklch, var(--ok) 14%, transparent);
+    --warn: oklch(62% 0.13 70);
+    --warn-soft: color-mix(in oklch, var(--warn) 18%, transparent);
+    --danger: oklch(56% 0.17 25);
+    --danger-soft: color-mix(in oklch, var(--danger) 14%, transparent);
+    --t-understand: oklch(56% 0.15 255);
+    --t-practice: oklch(52% 0.10 200);
+    --t-recall: oklch(64% 0.13 75);
+    --t-test: oklch(58% 0.16 25);
+    --t-review: oklch(55% 0.12 155);
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 2px oklch(18% 0.012 250 / .05), 0 12px 32px oklch(18% 0.012 250 / .10);
+    --fs-h1: 24px; --fs-h2: 17px; --fs-h3: 15px; --fs-body: 14px; --fs-meta: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--font-body); font-size: var(--fs-body); line-height: 1.55;
+    text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+  }
+  img, svg { display: block; max-width: 100%; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  p { text-wrap: pretty; margin: 0; }
+  h1, h2, h3, h4 { text-wrap: balance; margin: 0; font-family: var(--font-display); }
+  .h1, h1 { font-size: var(--fs-h1); font-weight: 650; letter-spacing: -0.02em; }
+  .h2, h2 { font-size: var(--fs-h2); font-weight: 620; letter-spacing: -0.01em; }
+  .h3, h3 { font-size: var(--fs-h3); font-weight: 600; }
+  .meta { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--muted); }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .spacer { flex: 1; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .spaced { margin-top: 18px; }
+
+  /* ── app shell ─────────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; height: 100vh; z-index: 20; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px; border-bottom: 1px solid var(--border); }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--fg); color: var(--surface); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 15px; flex: none; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-text strong { font-family: var(--font-display); font-size: 16px; letter-spacing: -0.01em; }
+  .brand-text em { font-style: normal; font-size: 11px; color: var(--muted); }
+  .nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px 4px; }
+  .nav-group-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--muted); padding: 14px 22px 2px; margin: 0; }
+  a.nav-item { text-decoration: none; }
+  .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 14px; transition: background .14s ease, color .14s ease; }
+  .nav-item .ico { width: 16px; height: 16px; flex: none; }
+  .nav-item:hover { background: var(--fg-soft); color: var(--fg); }
+  .nav-item[aria-current="page"] { background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; }
+  .nav-count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .nav-item[aria-current="page"] .nav-count { color: color-mix(in oklch, var(--accent) 68%, var(--fg)); }
+  .sidebar-foot { margin-top: auto; padding: 16px 18px 20px; border-top: 1px solid var(--border); }
+  .foot-num { font-family: var(--font-display); font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+  .foot-num small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .appbar { position: sticky; top: 0; z-index: 10; background: color-mix(in oklch, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .appbar h1 { font-size: 21px; }
+  .appbar-actions { display: flex; gap: 8px; }
+  .view { padding: 24px 32px 88px; width: 100%; max-width: 1120px; }
+  .view-section { display: flex; flex-direction: column; gap: 20px; }
+  .foot-note { padding-top: 4px; }
+
+  /* ── buttons ───────────────────────────────────────────────── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px; border-radius: var(--radius); border: 1px solid transparent; font-size: 14px; font-weight: 550; letter-spacing: -0.005em; transition: background .15s ease, border-color .15s ease, color .15s ease, transform .05s ease; }
+  .btn:active { transform: translateY(1px); }
+  .btn-sm { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+  .btn-primary { background: color-mix(in oklch, var(--accent) 90%, black); color: var(--surface); border-color: color-mix(in oklch, var(--accent) 90%, black); }
+  .btn-primary:hover { background: color-mix(in oklch, var(--accent) 82%, black); border-color: color-mix(in oklch, var(--accent) 82%, black); }
+  .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+  .btn-secondary:hover { border-color: color-mix(in oklch, var(--fg) 45%, transparent); }
+  .btn-ghost { background: transparent; color: var(--muted); border-color: transparent; padding-inline: 8px; }
+  .btn-ghost:hover { color: var(--fg); background: var(--fg-soft); }
+  .btn:disabled { opacity: .45; }
+
+  /* ── surfaces ──────────────────────────────────────────────── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 20px 0; }
+  .sec-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  /* ── progress / bars ───────────────────────────────────────── */
+  .bar { height: 8px; border-radius: 999px; background: var(--fg-soft); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .35s ease; }
+  .bar-lg { height: 10px; }
+  .bar-sm { height: 6px; }
+
+  /* ── pills / tags ──────────────────────────────────────────── */
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; white-space: nowrap; }
+  .pill-ok { background: var(--ok-soft); color: color-mix(in oklch, var(--ok) 64%, var(--fg)); }
+  .pill-warn { background: var(--warn-soft); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); }
+  .tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .tag-plain { background: var(--fg-soft); border-color: transparent; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; white-space: nowrap; }
+  .badge-mastered { background: var(--ok-soft); color: color-mix(in oklch, var(--ok) 64%, var(--fg)); }
+  .badge-learning { background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); }
+  .badge-gap { background: var(--warn-soft); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); }
+  .st-mastered { color: var(--ok); }
+  .st-learning { color: var(--accent); }
+  .st-gap { color: var(--warn); }
+
+  /* ── flow stepper ──────────────────────────────────────────── */
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .flow-step { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--muted); }
+  .flow-step:hover { border-color: color-mix(in oklch, var(--fg) 32%, transparent); color: var(--fg); }
+  .flow-step.is-current { border-color: color-mix(in oklch, var(--accent) 42%, var(--border)); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; background: var(--accent-soft); }
+  .flow-step .n { font-family: var(--font-mono); font-size: 11px; opacity: .8; }
+  .flow-sep { color: var(--border); font-size: 13px; }
+
+  /* ── segmented control ─────────────────────────────────────── */
+  .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--fg-soft); border-radius: 999px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; font-size: 13px; color: color-mix(in oklch, var(--fg) 68%, transparent); min-height: 34px; transition: background .14s ease, color .14s ease; }
+  .seg button:hover { color: var(--fg); }
+  .seg button.is-active { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px oklch(18% 0.012 250 / .08); font-weight: 600; }
+
+  /* ── stats ─────────────────────────────────────────────────── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat b { font-family: var(--font-display); font-size: 26px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .stat b small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+
+  /* ── portfolio timeline ────────────────────────────────────── */
+  .tl { display: flex; flex-direction: column; }
+  .tl-day { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--border); }
+  .tl-day:first-child { border-top: 0; padding-top: 4px; }
+  .tl-date { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-top: 3px; white-space: nowrap; }
+  .tl-body { display: flex; flex-direction: column; gap: 10px; }
+  .tl-card { width: 100%; text-align: left; border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; background: var(--surface); display: flex; flex-direction: column; gap: 7px; transition: border-color .14s ease, background .14s ease; }
+  .tl-card:hover { border-color: color-mix(in oklch, var(--fg) 32%, transparent); background: var(--fg-soft); }
+  .tl-title { font-size: 14px; font-weight: 550; }
+
+  /* ── diagnosis ─────────────────────────────────────────────── */
+  .radar-wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 30px; align-items: center; }
+  .radar-legend { display: flex; flex-direction: column; gap: 2px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .legend-row:first-child { border-top: 0; }
+  .legend-n { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); flex: none; }
+  .legend-name { font-size: 13.5px; }
+  .legend-score { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13.5px; font-weight: 600; }
+  .comp-row { display: flex; flex-direction: column; gap: 16px; padding: 15px 0; border-top: 1px solid var(--border); }
+  .comp-row:first-child { border-top: 0; padding-top: 0; }
+  .comp-top { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: transparent; border: 0; padding: 0; }
+  .comp-name { font-size: 14.5px; font-weight: 550; }
+  .comp-score { margin-left: auto; font-family: var(--font-display); font-size: 19px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .comp-track { position: relative; }
+  .comp-target { position: absolute; top: -3px; bottom: -3px; width: 2px; background: color-mix(in oklch, var(--muted) 55%, transparent); border-radius: 2px; }
+  .comp-target::after { content: '目標 ' attr(data-t); position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .comp-evidence { background: var(--fg-soft); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+  .comp-evidence .meta { color: color-mix(in oklch, var(--fg) 62%, var(--muted)); }
+  .ev-item { display: flex; gap: 10px; font-size: 13px; }
+  .ev-item .meta { flex: none; width: 62px; padding-top: 1px; }
+
+  /* ── knowledge map browser ─────────────────────────────────── */
+  .browser { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(260px, 320px); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); }
+  .bcol { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 440px; max-height: 540px; overflow-y: auto; }
+  .bcol-head { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: 13px 15px 9px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .bitem { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; padding: 11px 15px; border: 0; border-left: 2px solid transparent; background: transparent; font-size: 13.5px; color: var(--fg); transition: background .13s ease; }
+  .bitem:hover { background: var(--fg-soft); }
+  .bitem.is-active { background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; border-left-color: var(--accent); }
+  .bitem .bmeta { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); flex: none; }
+  .bitem.is-quiet .bmeta { color: color-mix(in oklch, var(--muted) 70%, transparent); }
+  .bdetail { padding: 18px; display: flex; flex-direction: column; gap: 13px; background: color-mix(in oklch, var(--bg) 55%, var(--surface)); }
+  .bdetail .crumb { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.04em; }
+  .bdetail h3 { font-size: 16px; line-height: 1.35; }
+  .kv { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 10px; font-size: 12.5px; }
+  .kv dt { color: var(--muted); font-size: 11.5px; }
+  .kv dd { margin: 0; }
+  .map-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+  /* ── career ────────────────────────────────────────────────── */
+  .career-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); gap: 14px; }
+  .career-card { text-align: left; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 11px; transition: border-color .14s ease, box-shadow .14s ease; }
+  .career-card:hover { border-color: color-mix(in oklch, var(--accent) 42%, var(--border)); }
+  .career-card.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .match { font-family: var(--font-display); font-size: 30px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .match small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+  .path-list { display: flex; flex-direction: column; }
+  .path-item { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .path-item:first-child { border-top: 0; }
+  .path-n { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .ai-box { border: 1px solid color-mix(in oklch, var(--accent) 30%, var(--border)); background: color-mix(in oklch, var(--accent) 5%, var(--surface)); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .analyzing { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 10px 0; }
+  .spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: spin .7s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── modal ─────────────────────────────────────────────────── */
+  #modalRoot[hidden] { display: none; }
+  .modal-backdrop { position: fixed; inset: 0; background: oklch(18% 0.012 250 / .35); backdrop-filter: blur(2px); z-index: 40; }
+  .modal { position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+  .modal-head { padding: 22px 24px 0; }
+  .modal-title { font-size: 18px; }
+  .modal-head .meta { margin-top: 4px; }
+  .modal-body { padding: 20px 24px 4px; }
+  .modal-body .field + .field { margin-top: 14px; }
+  .field-label { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; display: block; }
+  .modal-actions { display: flex; align-items: center; gap: 8px; padding: 20px 24px 22px; }
+  .modal-actions .btn-primary { margin-left: auto; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label { font-size: 13px; color: var(--fg); font-weight: 550; }
+  .input, .textarea { width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--fg); font: inherit; font-size: 14px; }
+  .input:focus, .textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .textarea { resize: vertical; line-height: 1.6; min-height: 96px; }
+  .static-val { padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--fg-soft); font-weight: 550; }
+  .notice { background: var(--fg-soft); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--fg); margin: 14px 0 0; }
+
+  /* ── toast ─────────────────────────────────────────────────── */
+  .toast-root { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+  .toast { background: var(--fg); color: var(--surface); padding: 11px 16px; border-radius: 10px; font-size: 13.5px; box-shadow: var(--shadow); opacity: 1; transition: opacity .3s ease, transform .3s ease; max-width: 340px; }
+  .toast.out { opacity: 0; transform: translateY(6px); }
+
+  @media (max-width: 1100px) {
+    .browser { grid-template-columns: 1fr; }
+    .bcol { border-right: 0; border-bottom: 1px solid var(--border); min-height: 0; max-height: 300px; }
+    .radar-wrap { grid-template-columns: 1fr; gap: 20px; }
+  }
+  @media (max-width: 920px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; }
+    .brand { border-bottom: 0; padding: 4px 6px; }
+    .brand-text { display: none; }
+    .nav { flex-direction: row; padding: 0; gap: 2px; }
+    .nav-item { white-space: nowrap; padding: 8px 12px; }
+    .nav-count { display: none; }
+    .nav-group-label { display: none; }
+    .sidebar-foot { display: none; }
+    .appbar, .view { padding-inline: 18px; }
+  }
+  @media (max-width: 560px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .tl-day { grid-template-columns: 1fr; gap: 6px; }
+    .stat-grid { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="brand">
+      <span class="brand-mark">拾</span>
+      <span class="brand-text"><strong>拾級</strong><em>升學準備學習管理</em></span>
+    </div>
+    <nav class="nav" aria-label="學習規劃">
+      <a class="nav-item" href="study-planner.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>今日</span></a>
+      <a class="nav-item" href="study-planner.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>本週</span></a>
+      <a class="nav-item" href="study-planner.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>固定任務</span></a>
+      <a class="nav-item" href="study-planner.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span>課表</span></a>
+      <a class="nav-item" href="study-planner.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M9 8h7M9 12h7"/></svg><span>學習日誌</span></a>
+    </nav>
+    <p class="nav-group-label">歷程與探索</p>
+    <nav class="nav" id="nav" data-od-id="nav" aria-label="歷程與探索"></nav>
+    <div class="sidebar-foot">
+      <div class="row-between"><span class="meta">目標</span><span class="meta">資工所筆試</span></div>
+      <div class="row-between" style="margin: 6px 0 8px;">
+        <span class="foot-num num" id="footDays">—<small>天</small></span>
+        <span class="meta num" id="footHours">—</span>
+      </div>
+      <div class="bar"><i id="footBar" style="width:0%"></i></div>
+      <p class="meta" style="margin-top:8px;">累積投入時數 / 預估需求</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="appbar" data-od-id="appbar">
+      <div>
+        <h1 id="pageTitle">學習歷程</h1>
+        <p class="meta" id="pageSub"></p>
+      </div>
+      <div class="appbar-actions" id="appbarActions"></div>
+    </header>
+    <div class="view" id="view"></div>
+  </main>
+</div>
+<div id="modalRoot" hidden></div>
+<div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── mock data ────────────────────────────────────────────── */
+  var PROFILE = {
+    name: '陳品妤', school: '國立中正大學 資訊工程學系 · 三年級',
+    goal: '報考資訊工程研究所（考試入學）',
+    targetLabel: '2027 年 2 月筆試', days: 135,
+    hoursUsed: 218, hoursNeed: 540
+  };
+
+  var PTYPES = { course: '修課', self: '自主學習', project: '專題', contest: '競賽', cert: '檢定', mock: '模擬考' };
+  var PCOLOR = { course: '--t-understand', self: '--t-practice', project: '--t-recall', contest: '--t-test', cert: '--t-review', mock: '--warn' };
+
+  var STATUS = {
+    mastered: { label: '已掌握', badge: 'badge-mastered', cls: 'st-mastered', action: '已掌握，建議以「回想」形式低頻維護，避免遺忘。' },
+    learning: { label: '學習中', badge: 'badge-learning', cls: 'st-learning', action: '學習中，建議本週安排「理解 + 練習」各一次，並在 48 小時內做一次回想。' },
+    gap: { label: '待加強', badge: 'badge-gap', cls: 'st-gap', action: '明顯落後，建議列為下週優先任務：先看例題，再練 3–5 題並訂正。' }
+  };
+  var EFFORT = { '高': 8, '中': 5, '低': 3 };
+
+  var COMPS = [
+    { id: 'algo', name: '資料結構與演算法', short: '資結・演算法', score: 74, target: 80, src: ['p2', 'p5', 'p4'], note: '樹與圖的複雜度分析不穩，遞迴與基本排序表現良好。' },
+    { id: 'code', name: '程式實作能力', short: '程式實作', score: 81, target: 78, src: ['p5', 'p6', 'p4'], note: 'C++ 與 Python 實作熟練，能在時限內完成中型題目。' },
+    { id: 'math', name: '數學基礎（線代／離散）', short: '數學基礎', score: 68, target: 80, src: ['p1', 'p8'], note: '矩陣運算熟練，但特徵值與正交性觀念仍需補強。' },
+    { id: 'sys', name: '計算機系統（OS／計組）', short: '計算機系統', score: 72, target: 75, src: ['p3', 'p9'], note: '行程與記憶體概念清楚，同步與檔案系統題型偏弱。' },
+    { id: 'eng', name: '英文閱讀', short: '英文閱讀', score: 79, target: 75, src: ['p7'], note: 'TOEIC 785，專業長文閱讀速度可再加強。' },
+    { id: 'team', name: '專題與協作', short: '專題協作', score: 84, target: 70, src: ['p6'], note: '能獨立完成專題規劃與前端實作，具備文件撰寫能力。' }
+  ];
+
+  var MAP = [
+    { id: 'sw', name: '軟體開發與實作', skills: [
+      { id: 'lang', name: '程式語言', course: '程式設計（一）（二）· A', res: '《C++ Primer》指標與記憶體章節', nodes: [
+        { id: 'n1', name: 'C++ 指標與記憶體', status: 'mastered', imp: '高' },
+        { id: 'n2', name: 'Python 資料處理', status: 'mastered', imp: '中' },
+        { id: 'n3', name: '物件導向設計', status: 'learning', imp: '中' } ] },
+      { id: 'ds', name: '資料結構', course: '資料結構（學年課）· A+', res: '《Introduction to Algorithms》Ch.10–13', nodes: [
+        { id: 'n4', name: '陣列與字串', status: 'mastered', imp: '高' },
+        { id: 'n5', name: '鏈結串列', status: 'mastered', imp: '高' },
+        { id: 'n6', name: '堆疊與佇列', status: 'mastered', imp: '中' },
+        { id: 'n7', name: '樹與二元樹', status: 'learning', imp: '高' },
+        { id: 'n8', name: '圖：走訪與最短路徑', status: 'gap', imp: '高' },
+        { id: 'n9', name: '雜湊表', status: 'learning', imp: '中' } ] },
+      { id: 'alg', name: '演算法', course: '演算法（修課中）', res: '《Introduction to Algorithms》Ch.15–16、22–25', nodes: [
+        { id: 'n10', name: '排序與搜尋', status: 'mastered', imp: '高' },
+        { id: 'n11', name: '分治法', status: 'learning', imp: '高' },
+        { id: 'n12', name: '動態規劃', status: 'gap', imp: '高' },
+        { id: 'n13', name: '貪心法', status: 'learning', imp: '中' },
+        { id: 'n14', name: '圖論演算法', status: 'gap', imp: '高' } ] } ] },
+    { id: 'ai', name: '資料與 AI', skills: [
+      { id: 'stat', name: '機率與統計', course: '機率與統計（預計下學期）', res: '《Probability and Statistics for Engineers》', nodes: [
+        { id: 'n15', name: '機率基礎', status: 'learning', imp: '中' },
+        { id: 'n16', name: '假設檢定', status: 'gap', imp: '低' } ] },
+      { id: 'ml', name: '機器學習', course: '尚未修課', res: '《Hands-On Machine Learning》Ch.1–3', nodes: [
+        { id: 'n17', name: '線性迴歸與分類', status: 'learning', imp: '中' },
+        { id: 'n18', name: '模型評估與調參', status: 'gap', imp: '中' } ] },
+      { id: 'de', name: '資料工程', course: '資料庫系統 · B+', res: 'PostgreSQL 官方教學與 SQL 練習', nodes: [
+        { id: 'n19', name: 'SQL 查詢與建模', status: 'mastered', imp: '中' },
+        { id: 'n20', name: '資料清理與管線', status: 'gap', imp: '低' } ] } ] },
+    { id: 'sysnet', name: '系統與網路', skills: [
+      { id: 'osx', name: '作業系統', course: '作業系統（上）· B+', res: '《Operating System Concepts》Ch.3–7', nodes: [
+        { id: 'n21', name: '行程與執行緒', status: 'mastered', imp: '高' },
+        { id: 'n22', name: '排程演算法', status: 'learning', imp: '高' },
+        { id: 'n23', name: '記憶體管理', status: 'learning', imp: '高' },
+        { id: 'n24', name: '同步與死結', status: 'gap', imp: '中' } ] },
+      { id: 'co', name: '計算機組織', course: '計算機組織（修課中）', res: '《Computer Organization and Design》Ch.4', nodes: [
+        { id: 'n25', name: '數位邏輯', status: 'learning', imp: '中' },
+        { id: 'n26', name: '管線與快取', status: 'gap', imp: '中' } ] },
+      { id: 'net', name: '計算機網路', course: '計算機網路（選修）', res: '《Computer Networking: A Top-Down Approach》Ch.3', nodes: [
+        { id: 'n27', name: 'TCP/IP 基礎', status: 'learning', imp: '低' } ] } ] },
+    { id: 'mathbase', name: '數理基礎', skills: [
+      { id: 'la', name: '線性代數', course: '線性代數（上）· A', res: '《Linear Algebra Done Right》Ch.5', nodes: [
+        { id: 'n28', name: '向量空間', status: 'learning', imp: '高' },
+        { id: 'n29', name: '矩陣運算', status: 'mastered', imp: '高' },
+        { id: 'n30', name: '特徵值與特徵向量', status: 'gap', imp: '高' },
+        { id: 'n31', name: '正交性與投影', status: 'gap', imp: '中' } ] },
+      { id: 'dm', name: '離散數學', course: '離散數學 · A-', res: '《Discrete Mathematics and Its Applications》Ch.10', nodes: [
+        { id: 'n32', name: '集合與邏輯', status: 'mastered', imp: '中' },
+        { id: 'n33', name: '圖論基礎', status: 'learning', imp: '高' },
+        { id: 'n34', name: '遞迴與生成函數', status: 'gap', imp: '中' } ] },
+      { id: 'cal', name: '微積分', course: '微積分（一）（二）· B+', res: '《Calculus》Ch.7 積分技巧', nodes: [
+        { id: 'n35', name: '極限與導數', status: 'mastered', imp: '中' },
+        { id: 'n36', name: '積分技巧', status: 'learning', imp: '低' } ] } ] }
+  ];
+
+  var CAREERS = [
+    { id: 'backend', name: '後端工程師', en: 'Backend Engineer', match: 86,
+      fit: '你具備紮實的程式實作與系統概念，資料結構基礎足以支撐服務與 API 開發。',
+      need: ['資料結構與演算法', '資料庫設計', '系統設計'], gap: ['動態規劃', '同步與死結'],
+      path: ['補強圖論與動態規劃（約 4 週）', '熟悉資料庫與 REST API 設計（約 3 週）', '完成一個可部署的後端專題（約 6 週）'],
+      kw: ['REST API', 'SQL', 'Docker', 'Node.js'], grad: ['資訊工程所', '資訊管理所'] },
+    { id: 'algo', name: '演算法工程師', en: 'Algorithm Engineer', match: 81,
+      fit: '演算法是這個職務的核心，你已有基礎，但動態規劃與圖論仍需補強。',
+      need: ['演算法設計', '複雜度分析', '離散數學'], gap: ['動態規劃', '圖論演算法'],
+      path: ['系統性補強動態規劃（約 4 週）', '大量練題並建立錯題覆盤（約 6 週）', '修習進階演算法並挑戰競賽'],
+      kw: ['C++', '複雜度分析', 'LeetCode'], grad: ['資訊工程所'] },
+    { id: 'data', name: '資料工程師', en: 'Data Engineer', match: 78,
+      fit: '你的 SQL 與程式能力是良好起點，資料清理與管線建置經驗仍不足。',
+      need: ['資料庫', '資料管線', '程式實作'], gap: ['資料清理與管線', '模型評估'],
+      path: ['學習 SQL 與資料建模（約 3 週）', '建立 ETL 小專題（約 5 週）', '導入排程與監控工具'],
+      kw: ['SQL', 'ETL', 'Airflow', 'Spark'], grad: ['資訊工程所', '資料科學所'] },
+    { id: 'ds', name: '資料科學家', en: 'Data Scientist', match: 72,
+      fit: '你的專題與視覺化能力有助於資料洞察，統計與機器學習基礎需要補強。',
+      need: ['機率與統計', '機器學習', '資料視覺化'], gap: ['假設檢定', '模型評估'],
+      path: ['補強機率與統計（約 4 週）', '實作完整 ML 專題（約 6 週）', '學習模型評估與調參'],
+      kw: ['Python', 'pandas', 'scikit-learn'], grad: ['資料科學所', '統計所'] },
+    { id: 'sec', name: '資安工程師', en: 'Security Engineer', match: 63,
+      fit: '你對系統與網路有基本理解，但資安專屬知識（密碼學、弱點分析）尚未接觸。',
+      need: ['作業系統', '計算機網路', '密碼學'], gap: ['TCP/IP 基礎', '同步與死結'],
+      path: ['補強網路與系統觀念（約 4 週）', '認識常見弱點與攻擊手法', '考取基礎資安證照'],
+      kw: ['Linux', 'Network', 'CTF'], grad: ['資訊工程所', '資訊安全所'] },
+    { id: 'emb', name: '嵌入式／韌體工程師', en: 'Firmware Engineer', match: 58,
+      fit: '這個方向需要較多計算機組織與硬體知識，目前與你的能力輪廓距離最遠。',
+      need: ['計算機組織', 'C 語言', '作業系統'], gap: ['管線與快取', '數位邏輯'],
+      path: ['補強計算機組織（約 5 週）', '以 C 實作驅動程式練習', '完成嵌入式專題'],
+      kw: ['C', 'RTOS', 'MCU'], grad: ['資訊工程所', '電機工程所'] }
+  ];
+
+  var ENTRIES = [
+    { id: 'p1', date: '2026-09-16', type: 'self', title: '線性代數第五章 5-1 完成', org: '自主學習', min: 90, result: '', desc: '完成 5-1 向量空間複習與例題 12 題，特徵值仍不熟。', skills: ['向量空間', '矩陣運算'], ev: '學習日誌 9/16' },
+    { id: 'p2', date: '2026-09-12', type: 'mock', title: '資料結構模擬測驗（第一次）', org: '校內模考', min: 100, result: '62 / 100', desc: '樹與圖的複雜度分析失分最多，遞迴題掌握良好。', skills: ['樹與二元樹', '圖'], ev: '測驗卷 #3' },
+    { id: 'p3', date: '2026-09-05', type: 'self', title: '作業系統 Chapter 1–2 複習', org: '自主學習', min: 120, result: '', desc: '完成行程與執行緒概念整理，同步問題待加強。', skills: ['行程與執行緒'], ev: '筆記本 A' },
+    { id: 'p4', date: '2026-08-22', type: 'contest', title: '校內程式設計競賽', org: '資訊工程學系', min: 180, result: '佳作', desc: '解出 3 / 6 題，動態規劃題卡住。', skills: ['程式實作', '動態規劃'], ev: '獎狀' },
+    { id: 'p5', date: '2026-06-24', type: 'course', title: '資料結構（學年課）', org: '資訊工程學系', min: 0, result: 'A+', desc: '學期總成績 A+，課程專題以圖論演算法實作。', skills: ['資料結構', '圖論'], ev: '成績單' },
+    { id: 'p6', date: '2026-06-20', type: 'project', title: '個人化學習排程系統專題', org: '課程專題', min: 0, result: '', desc: '以網頁前端實作學習排程與覆蓋率視覺化，負責架構與互動設計。', skills: ['前端實作', '專案協作', '資訊視覺化'], ev: 'GitHub repo' },
+    { id: 'p7', date: '2026-06-05', type: 'cert', title: 'TOEIC 多益英語測驗', org: 'ETS', min: 0, result: '785', desc: '閱讀 410、聽力 375。專業英文長文閱讀速度仍待提升。', skills: ['英文閱讀'], ev: '成績單' },
+    { id: 'p8', date: '2026-03-10', type: 'course', title: '線性代數（上）', org: '理學院', min: 0, result: 'A', desc: '矩陣運算熟練，特徵值與對角化僅達基本理解。', skills: ['矩陣運算', '特徵值'], ev: '成績單' },
+    { id: 'p9', date: '2026-02-28', type: 'course', title: '作業系統（上）', org: '資訊工程系', min: 0, result: 'B+', desc: '記憶體管理與排程演算法表現中等。', skills: ['記憶體管理'], ev: '成績單' }
+  ];
+
+  /* ── helpers ──────────────────────────────────────────────── */
+  function ls(key, val) {
+    try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) {}
+    return null;
+  }
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function byDate(a, b) { return b.date.localeCompare(a.date); }
+  function fmtDate(d) { var p = d.split('-'); return p[1] + '/' + p[2]; }
+  function fmtDateFull(d) { var p = d.split('-'); return p[0] + ' 年 ' + (+p[1]) + ' 月 ' + (+p[2]) + ' 日'; }
+  function getEntry(id) { for (var i = 0; i < ENTRIES.length; i++) if (ENTRIES[i].id === id) return ENTRIES[i]; return null; }
+  function getComp(id) { for (var i = 0; i < COMPS.length; i++) if (COMPS[i].id === id) return COMPS[i]; return null; }
+  function getCareer(id) { for (var i = 0; i < CAREERS.length; i++) if (CAREERS[i].id === id) return CAREERS[i]; return null; }
+  function getDom(id) { for (var i = 0; i < MAP.length; i++) if (MAP[i].id === id) return MAP[i]; return null; }
+  function getSkill(dId, sId) { var d = getDom(dId); if (!d) return null; for (var i = 0; i < d.skills.length; i++) if (d.skills[i].id === sId) return d.skills[i]; return null; }
+  function nodeInfo(id) {
+    for (var i = 0; i < MAP.length; i++) { var d = MAP[i];
+      for (var j = 0; j < d.skills.length; j++) { var s = d.skills[j];
+        for (var k = 0; k < s.nodes.length; k++) if (s.nodes[k].id === id) return { dom: d, skill: s, node: s.nodes[k] }; } }
+    return null;
+  }
+  function allNodes() {
+    var out = []; MAP.forEach(function (d) { d.skills.forEach(function (s) { s.nodes.forEach(function (n) { out.push(n); }); }); });
+    return out;
+  }
+  function statusCounts() {
+    var c = { mastered: 0, learning: 0, gap: 0 };
+    allNodes().forEach(function (n) { c[n.status]++; }); return c;
+  }
+  function toast(msg) {
+    var root = $('#toastRoot');
+    var d = document.createElement('div');
+    d.className = 'toast'; d.textContent = msg; root.appendChild(d);
+    setTimeout(function () { d.classList.add('out'); setTimeout(function () { d.remove(); }, 320); }, 2400);
+  }
+
+  var state = {
+    view: ls('shiji:cc:view') || 'portfolio',
+    pFilter: 'all',
+    compOpen: null,
+    map: { dom: 'sw', skill: 'ds', node: 'n7' },
+    mapFilter: 'all',
+    career: 'backend',
+    target: null,
+    busy: null,
+    analysisAt: null
+  };
+
+  /* ── nav + appbar ─────────────────────────────────────────── */
+  var ICONS = {
+    portfolio: '<path d="M4 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M14 4v4h4"/><path d="M8 12h8M8 16h6"/>',
+    diagnosis: '<path d="M3 12h4l2.5-7 4 14 2.5-8 1.5 1h3.5"/>',
+    map: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7.4 7.6l3.2 8.8M16.6 7.6l-3.2 8.8"/>',
+    career: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>'
+  };
+  var NAV = [
+    { id: 'portfolio', label: '學習歷程' },
+    { id: 'diagnosis', label: '能力診斷' },
+    { id: 'map', label: '知識地圖' },
+    { id: 'career', label: 'AI 職涯探索' }
+  ];
+  var CFG = {
+    portfolio: { title: '學習歷程', sub: '把修課、專題、競賽與自主學習整理成可診斷的紀錄', actions: '<button class="btn btn-primary" data-action="p-add">新增紀錄</button>' },
+    diagnosis: { title: '能力診斷', sub: '依歷程紀錄估算各能力向度現況與目標落差', actions: '<button class="btn btn-secondary" data-action="diag-run">重新診斷</button>' },
+    map: { title: '專業／技能／知識地圖', sub: '從專業領域一路下鑽到知識節點的掌握狀態', actions: '' },
+    career: { title: 'AI 職涯探索', sub: '依能力輪廓模擬職涯匹配與學習路徑建議', actions: '<button class="btn btn-primary" data-action="career-run">重新分析</button>' }
+  };
+  var FLOW = [
+    { id: 'portfolio', label: '學習歷程' }, { id: 'diagnosis', label: '能力診斷' },
+    { id: 'map', label: '知識地圖' }, { id: 'career', label: 'AI 職涯探索' }
+  ];
+  function flowStrip() {
+    return '<div class="flow" data-od-id="flow">' + FLOW.map(function (f, i) {
+      return '<button class="flow-step' + (state.view === f.id ? ' is-current' : '') + '" data-action="nav" data-view="' + f.id + '">' +
+        '<span class="n">' + (i + 1) + '</span>' + f.label + '</button>' +
+        (i < FLOW.length - 1 ? '<span class="flow-sep" aria-hidden="true">→</span>' : '');
+    }).join('') + '</div>';
+  }
+  function renderNav() {
+    var counts = {
+      portfolio: ENTRIES.length + ' 筆',
+      diagnosis: COMPS.length + ' 向度',
+      map: allNodes().length + ' 節點',
+      career: CAREERS.length + ' 職涯'
+    };
+    $('#nav').innerHTML = NAV.map(function (it) {
+      return '<button class="nav-item" data-action="nav" data-view="' + it.id + '"' + (state.view === it.id ? ' aria-current="page"' : '') + '>' +
+        '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + ICONS[it.id] + '</svg>' +
+        '<span>' + it.label + '</span><span class="nav-count">' + counts[it.id] + '</span></button>';
+    }).join('');
+  }
+  function renderFoot() {
+    $('#footDays').innerHTML = PROFILE.days + '<small>天</small>';
+    $('#footHours').textContent = PROFILE.hoursUsed + ' / ' + PROFILE.hoursNeed + ' 小時';
+    $('#footBar').style.width = Math.round(PROFILE.hoursUsed / PROFILE.hoursNeed * 100) + '%';
+  }
+  function render(keepScroll) {
+    var cfg = CFG[state.view] || CFG.portfolio;
+    $('#pageTitle').textContent = cfg.title;
+    $('#pageSub').textContent = cfg.sub;
+    $('#appbarActions').innerHTML = cfg.actions;
+    renderNav(); renderFoot();
+    var body = { portfolio: tplPortfolio, diagnosis: tplDiagnosis, map: tplMap, career: tplCareer }[state.view];
+    $('#view').innerHTML = body();
+    if (!keepScroll) window.scrollTo({ top: 0 });
+    ls('shiji:cc:view', state.view);
+  }
+
+  /* ── 學習歷程 ─────────────────────────────────────────────── */
+  function stat(k, v, u, note) {
+    return '<div class="stat"><span class="meta">' + k + '</span><b class="num">' + v + (u ? '<small>' + u + '</small>' : '') + '</b><span class="meta">' + note + '</span></div>';
+  }
+  function entryCard(e) {
+    return '<button class="tl-card" data-action="p-open" data-id="' + e.id + '" data-od-id="entry-' + e.id + '">' +
+      '<div class="row-between"><span class="row" style="gap:8px;min-width:0;">' +
+        '<span class="tag"><i class="dot" style="background:var(' + PCOLOR[e.type] + ')"></i>' + PTYPES[e.type] + '</span>' +
+        '<span class="tl-title">' + esc(e.title) + '</span></span>' +
+        (e.result ? '<span class="pill pill-ok">' + esc(e.result) + '</span>' : (e.min ? '<span class="meta num">' + e.min + ' 分</span>' : '')) +
+      '</div>' +
+      '<p style="font-size:13px;color:var(--muted);">' + esc(e.desc) + '</p>' +
+      '<div class="row" style="gap:6px;flex-wrap:wrap;">' + e.skills.map(function (s) { return '<span class="tag tag-plain">' + esc(s) + '</span>'; }).join('') +
+        '<span class="meta" style="margin-left:auto;">' + esc(e.org) + '</span></div>' +
+    '</button>';
+  }
+  function tplPortfolio() {
+    var list = ENTRIES.filter(function (e) { return state.pFilter === 'all' || e.type === state.pFilter; }).sort(byDate);
+    var segs = [{ id: 'all', label: '全部' }].concat(Object.keys(PTYPES).map(function (k) { return { id: k, label: PTYPES[k] }; }));
+    var subjCount = {}; ENTRIES.forEach(function (e) { e.skills.forEach(function (s) { subjCount[s] = 1; }); });
+    var groups = [];
+    list.forEach(function (e) { var g = groups[groups.length - 1]; if (!g || g.date !== e.date) groups.push({ date: e.date, items: [e] }); else g.items.push(e); });
+    return '<section class="view-section" data-od-id="view-portfolio">' + flowStrip() +
+      '<div class="card" data-od-id="portfolio-profile">' +
+        '<div class="row-between" style="align-items:flex-start;">' +
+          '<div><span class="meta">學習主體</span><h2 style="font-size:20px;margin:3px 0 4px;">' + PROFILE.name + '</h2>' +
+          '<p class="meta">' + PROFILE.school + '</p></div>' +
+          '<div style="text-align:right;"><span class="meta">目標</span>' +
+          '<p style="font-weight:600;margin:3px 0 2px;">' + PROFILE.goal + '</p>' +
+          '<p class="meta">' + PROFILE.targetLabel + ' · 剩餘 ' + PROFILE.days + ' 天</p></div>' +
+        '</div>' +
+        '<div class="stat-grid" style="margin-top:22px;padding-top:20px;border-top:1px solid var(--border);">' +
+          stat('累積讀書時數', PROFILE.hoursUsed, '小時', '近 8 週') +
+          stat('完成學習任務', '146', '項', '含練習與回想') +
+          stat('連續記錄天數', '23', '天', '自我調節歷程') +
+          stat('歷程紀錄', ENTRIES.length, '筆', subjCount ? Object.keys(subjCount).length + ' 項技能標籤' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="card" data-od-id="portfolio-timeline">' +
+        '<div class="sec-head"><div><h2>歷程時間軸</h2>' +
+        '<p class="meta">每一筆紀錄都會成為能力診斷的證據來源，而不是只留在腦中的感覺。</p></div>' +
+        '<div class="seg" role="tablist">' + segs.map(function (s) { return '<button class="' + (state.pFilter === s.id ? 'is-active' : '') + '" data-action="p-filter" data-id="' + s.id + '">' + s.label + '</button>'; }).join('') + '</div></div>' +
+        '<div class="tl" style="margin-top:18px;">' +
+          (groups.length ? groups.map(function (g) {
+            return '<div class="tl-day"><span class="tl-date">' + fmtDate(g.date) + '</span><div class="tl-body">' + g.items.map(entryCard).join('') + '</div></div>';
+          }).join('') : '<p class="empty">這個分類目前沒有紀錄。</p>') +
+        '</div>' +
+      '</div></section>';
+  }
+
+  /* ── 能力診斷 ─────────────────────────────────────────────── */
+  function radarSVG() {
+    var cx = 125, cy = 125, R = 88, n = COMPS.length, i, a;
+    var s = '';
+    [0.25, 0.5, 0.75, 1].forEach(function (f) {
+      var pts = [];
+      for (i = 0; i < n; i++) { a = -Math.PI / 2 + i * 2 * Math.PI / n; pts.push((cx + Math.cos(a) * R * f).toFixed(1) + ',' + (cy + Math.sin(a) * R * f).toFixed(1)); }
+      s += '<polygon points="' + pts.join(' ') + '" style="fill:none;stroke:var(--border);stroke-width:1"/>';
+    });
+    for (i = 0; i < n; i++) {
+      a = -Math.PI / 2 + i * 2 * Math.PI / n;
+      s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + Math.cos(a) * R).toFixed(1) + '" y2="' + (cy + Math.sin(a) * R).toFixed(1) + '" style="stroke:var(--border);stroke-width:1"/>';
+      s += '<circle cx="' + (cx + Math.cos(a) * (R + 13)).toFixed(1) + '" cy="' + (cy + Math.sin(a) * (R + 13)).toFixed(1) + '" r="9" style="fill:var(--surface);stroke:var(--border)"/>';
+      s += '<text x="' + (cx + Math.cos(a) * (R + 13)).toFixed(1) + '" y="' + (cy + Math.sin(a) * (R + 13) + 3.5).toFixed(1) + '" text-anchor="middle" font-size="10" style="fill:var(--muted);font-family:var(--font-mono)">' + (i + 1) + '</text>';
+    }
+    var dp = COMPS.map(function (c, idx) { var ang = -Math.PI / 2 + idx * 2 * Math.PI / n, f = c.score / 100; return (cx + Math.cos(ang) * R * f).toFixed(1) + ',' + (cy + Math.sin(ang) * R * f).toFixed(1); });
+    s += '<polygon points="' + dp.join(' ') + '" style="fill:color-mix(in oklch, var(--accent) 22%, transparent);stroke:var(--accent);stroke-width:2;stroke-linejoin:round"/>';
+    COMPS.forEach(function (c, idx) { var ang = -Math.PI / 2 + idx * 2 * Math.PI / n, f = c.score / 100; s += '<circle cx="' + (cx + Math.cos(ang) * R * f).toFixed(1) + '" cy="' + (cy + Math.sin(ang) * R * f).toFixed(1) + '" r="3" style="fill:var(--accent)"/>'; });
+    return '<svg viewBox="0 0 250 250" width="100%" height="250" role="img" aria-label="六項能力向度雷達圖">' + s + '</svg>';
+  }
+  function compRow(c, i) {
+    var open = state.compOpen === c.id;
+    var below = c.score < c.target;
+    return '<div class="comp-row" data-od-id="comp-' + c.id + '">' +
+      '<button class="comp-top" data-action="comp-toggle" data-id="' + c.id + '" aria-expanded="' + open + '">' +
+        '<span class="legend-n">' + (i + 1) + '</span><span class="comp-name">' + esc(c.name) + '</span>' +
+        '<span class="badge ' + (below ? 'badge-gap' : 'badge-mastered') + '">' + (below ? '低於目標門檻' : '已達目標門檻') + '</span>' +
+        '<span class="comp-score num">' + c.score + '</span></button>' +
+      '<div class="comp-track"><div class="bar bar-lg"><i style="width:' + c.score + '%;background:var(--' + (below ? 'warn' : 'ok') + ')"></i></div>' +
+        '<span class="comp-target" data-t="' + c.target + '" style="left:' + c.target + '%;"></span></div>' +
+      (open ? '<div class="comp-evidence"><p><strong>判斷依據：</strong>' + esc(c.note) + '</p>' +
+        '<p class="meta">目標門檻 ' + c.target + ' 分 · 落差 ' + (c.target - c.score > 0 ? '−' + (c.target - c.score) : '—') + '</p>' +
+        c.src.map(function (id) { var e = getEntry(id); return e ? '<div class="ev-item"><span class="meta">' + fmtDate(e.date) + '</span><span>' + esc(e.title) + '</span></div>' : ''; }).join('') +
+      '</div>' : '') +
+    '</div>';
+  }
+  function tplDiagnosis() {
+    var below = COMPS.filter(function (c) { return c.score < c.target; });
+    var sorted = COMPS.slice().sort(function (a, b) { return b.score - a.score; });
+    var top = sorted.slice(0, 2).map(function (c) { return c.name; }).join('、');
+    var low = sorted.slice(-2).reverse().map(function (c) { return c.name; }).join('、');
+    var avg = Math.round(COMPS.reduce(function (s, c) { return s + c.score; }, 0) / COMPS.length);
+    var busy = state.busy === 'diag';
+    return '<section class="view-section" data-od-id="view-diagnosis">' + flowStrip() +
+      '<div class="card" data-od-id="diagnosis-radar">' +
+        '<div class="sec-head"><div><h2>能力輪廓</h2>' +
+        '<p class="meta">分數由「學習歷程」紀錄以規則估算（Prototype 為 mock，非真實評測模型）。</p></div>' +
+        '<span class="pill">平均 ' + avg + ' 分</span></div>' +
+        '<div class="radar-wrap" style="margin-top:18px;">' + radarSVG() +
+          '<div class="radar-legend">' + COMPS.map(function (c, i) {
+            return '<div class="legend-row"><span class="legend-n">' + (i + 1) + '</span><span class="legend-name">' + esc(c.short) + '</span>' +
+              '<span class="legend-score num' + (c.score < c.target ? ' st-gap' : '') + '">' + c.score + '</span></div>';
+          }).join('') + '</div></div>' +
+      '</div>' +
+      '<div class="card" data-od-id="diagnosis-summary">' +
+        '<h2>診斷結論</h2>' +
+        (busy ? '<div class="analyzing"><span class="spinner"></span>正在依最新歷程重新計算各向度...</div>' : '') +
+        '<div class="grid-2" style="margin-top:16px;gap:18px;">' +
+          '<div><p class="meta">目前優勢</p><p style="margin-top:4px;">' + top + '</p></div>' +
+          '<div><p class="meta">需要補強</p><p style="margin-top:4px;">' + low + '</p></div>' +
+        '</div>' +
+        '<p class="notice">' + (below.length
+          ? '有 ' + below.length + ' 個向度低於目標門檻，已於下方標示落差；建議先用「知識地圖」找出對應的待加強節點，再排入本週任務。'
+          : '所有向度都已達到目標門檻，建議維持每週接觸次數並以回想鞏固。') + '</p>' +
+      '</div>' +
+      '<div class="card" data-od-id="diagnosis-breakdown">' +
+        '<div class="sec-head"><div><h2>向度明細與證據</h2><p class="meta">點擊任一列可展開估算依據與對應的歷程紀錄。</p></div></div>' +
+        '<div style="margin-top:8px;">' + COMPS.map(compRow).join('') + '</div>' +
+      '</div></section>';
+  }
+
+  /* ── 知識地圖 ─────────────────────────────────────────────── */
+  function filterNodes(nodes) {
+    if (state.mapFilter === 'all') return nodes;
+    return nodes.filter(function (n) { return n.status === state.mapFilter; });
+  }
+  function tplMap() {
+    var info = nodeInfo(state.map.node);
+    var d = getDom(state.map.dom), sk = getSkill(state.map.dom, state.map.skill);
+    if (!sk) { sk = d.skills[0]; state.map.skill = sk.id; }
+    var nodes = filterNodes(sk.nodes);
+    var counts = statusCounts();
+    var legend = [
+      { k: 'all', label: '全部 ' + allNodes().length },
+      { k: 'mastered', label: STATUS.mastered.label + ' ' + counts.mastered },
+      { k: 'learning', label: STATUS.learning.label + ' ' + counts.learning },
+      { k: 'gap', label: STATUS.gap.label + ' ' + counts.gap }
+    ];
+    return '<section class="view-section" data-od-id="view-map">' + flowStrip() +
+      '<div class="card" data-od-id="map-controls">' +
+        '<div class="sec-head"><div><h2>知識地圖</h2>' +
+        '<p class="meta">從專業領域 → 技能 → 知識節點逐層下鑽；點選節點可查看掌握狀態與建議行動。</p></div>' +
+        '<div class="seg">' + legend.map(function (l) { return '<button class="' + (state.mapFilter === l.k ? 'is-active' : '') + '" data-action="map-filter" data-id="' + l.k + '">' + l.label + '</button>'; }).join('') + '</div></div>' +
+      '</div>' +
+      '<div class="browser" data-od-id="map-browser">' +
+        '<div class="bcol"><div class="bcol-head">專業領域</div>' + MAP.map(function (dm) {
+          var c = statusCounts2(dm);
+          return '<button class="bitem' + (state.map.dom === dm.id ? ' is-active' : '') + '" data-action="map-dom" data-id="' + dm.id + '">' + esc(dm.name) + '<span class="bmeta">' + c.gap + ' 待補</span></button>';
+        }).join('') + '</div>' +
+        '<div class="bcol"><div class="bcol-head">技能</div>' + d.skills.map(function (s) {
+          var g = s.nodes.filter(function (n) { return n.status === 'gap'; }).length;
+          return '<button class="bitem' + (state.map.skill === s.id ? ' is-active' : '') + '" data-action="map-skill" data-id="' + s.id + '">' + esc(s.name) + '<span class="bmeta">' + s.nodes.length + ' 節點</span></button>';
+        }).join('') + '</div>' +
+        '<div class="bcol"><div class="bcol-head">知識節點</div>' +
+          (nodes.length ? nodes.map(function (n) {
+            return '<button class="bitem' + (state.map.node === n.id ? ' is-active' : '') + '" data-action="map-node" data-id="' + n.id + '">' +
+              '<i class="dot ' + STATUS[n.status].cls + '"></i>' + esc(n.name) +
+              (n.queued ? '<span class="bmeta">已排入</span>' : '') + '</button>';
+          }).join('') : '<p class="empty" style="padding:16px 15px;">此技能在目前的篩選條件下沒有節點。</p>') +
+        '</div>' +
+        '<div class="bdetail">' + (info ? nodeDetail(info) : '<p class="empty">請選擇一個知識節點。</p>') + '</div>' +
+      '</div>' +
+      '<p class="meta foot-note">節點狀態可對應到學習任務：待加強節點適合先「理解」再「練習」，學習中節點建議以「回想」鞏固。</p>' +
+    '</section>';
+  }
+  function statusCounts2(dm) { var c = { gap: 0 }; dm.skills.forEach(function (s) { s.nodes.forEach(function (n) { if (n.status === 'gap') c.gap++; }); }); return c; }
+  function nodeDetail(info) {
+    var n = info.node, st = STATUS[n.status];
+    return '<p class="crumb">' + esc(info.dom.name) + ' / ' + esc(info.skill.name) + '</p>' +
+      '<h3>' + esc(n.name) + '</h3>' +
+      '<div class="row" style="gap:8px;"><span class="badge ' + st.badge + '"><i class="dot"></i>' + st.label + '</span>' +
+        (n.queued ? '<span class="tag">已排入本週</span>' : '') + '</div>' +
+      '<dl class="kv">' +
+        '<dt>重要度</dt><dd>' + n.imp + '</dd>' +
+        '<dt>預估投入</dt><dd>約 ' + EFFORT[n.imp] + ' 小時</dd>' +
+        '<dt>關聯課程</dt><dd>' + esc(info.skill.course) + '</dd>' +
+        '<dt>建議資源</dt><dd>' + esc(info.skill.res) + '</dd>' +
+      '</dl>' +
+      '<p class="notice" style="margin-top:2px;">建議行動：' + st.action + '</p>' +
+      '<button class="btn btn-primary btn-sm" data-action="map-queue" data-id="' + n.id + '" style="justify-content:center;width:100%;min-height:44px;">排入本週學習任務</button>';
+  }
+
+  /* ── AI 職涯探索 ──────────────────────────────────────────── */
+  function aiSummary(c) {
+    var sorted = COMPS.slice().sort(function (a, b) { return b.score - a.score; });
+    var top = sorted[0], low = sorted[sorted.length - 1];
+    return '以你目前的歷程（' + ENTRIES.length + ' 筆紀錄、累積 ' + PROFILE.hoursUsed + ' 小時投入）分析，「' + c.name + '」與你的能力輪廓匹配度為 ' + c.match + '%。' +
+      '最大優勢來自「' + top.name + '」（' + top.score + ' 分），與此職務所需的「' + c.need[0] + '」高度相關。' +
+      '目前最明顯的落差是「' + low.name + '」（' + low.score + ' 分），建議先補上' + c.gap[0] + '，再進入第二階段的「' + c.path[1].replace(/（.*?）/g, '') + '」。';
+  }
+  function careerCard(c) {
+    return '<button class="career-card' + (state.career === c.id ? ' is-active' : '') + '" data-action="career-select" data-id="' + c.id + '" data-od-id="career-' + c.id + '">' +
+      '<div class="row-between"><div><p style="font-weight:600;">' + esc(c.name) + '</p><p class="meta">' + esc(c.en) + '</p></div>' +
+        (state.target === c.id ? '<span class="pill pill-ok">目前目標</span>' : '') + '</div>' +
+      '<p class="match">' + c.match + '<small>% 匹配</small></p>' +
+      '<div class="bar bar-sm"><i style="width:' + c.match + '%"></i></div>' +
+      '<p style="font-size:12.5px;color:var(--muted);">' + esc(c.fit) + '</p>' +
+    '</button>';
+  }
+  function tplCareer() {
+    var c = getCareer(state.career);
+    var busy = state.busy === 'career';
+    var when = state.analysisAt || '尚未重新分析';
+    return '<section class="view-section" data-od-id="view-career">' + flowStrip() +
+      '<div class="card" data-od-id="career-disclaimer">' +
+        '<div class="row-between"><div><h2>職涯匹配</h2>' +
+        '<p class="meta">依能力診斷結果排序，點選卡片查看缺口與建議學習路徑。</p></div>' +
+        '<span class="pill">模擬 AI 分析 · Prototype</span></div>' +
+        '<div class="career-grid" style="margin-top:18px;">' + CAREERS.map(careerCard).join('') + '</div>' +
+      '</div>' +
+      '<div class="grid-2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px;align-items:start;">' +
+        '<div class="ai-box" data-od-id="career-analysis">' +
+          '<div class="row-between"><span class="meta">AI 職涯分析摘要</span><span class="meta">' + esc(when) + '</span></div>' +
+          (busy ? '<div class="analyzing"><span class="spinner"></span>正在比對能力輪廓與職務需求...</div>'
+                : '<p style="font-size:14px;line-height:1.7;">' + esc(aiSummary(c)) + '</p>') +
+          '<div class="row" style="gap:8px;flex-wrap:wrap;">' + c.kw.map(function (k) { return '<span class="tag tag-plain">' + esc(k) + '</span>'; }).join('') + '</div>' +
+          '<p class="meta">此段文字由前端依 mock 資料以規則組合而成，非真實 AI 模型推論。</p>' +
+        '</div>' +
+        '<div class="card" data-od-id="career-detail">' +
+          '<div class="row-between"><h3>' + esc(c.name) + ' · 對應準備方向</h3></div>' +
+          '<p class="meta" style="margin-top:6px;">相關研究所：' + c.grad.join('、') + '</p>' +
+          '<div style="margin-top:14px;"><p class="meta">需要補強</p>' +
+            '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px;">' + c.gap.map(function (g) { return '<span class="badge badge-gap">' + esc(g) + '</span>'; }).join('') + '</div></div>' +
+          '<div style="margin-top:16px;"><p class="meta">建議學習路徑</p>' +
+            '<div class="path-list" style="margin-top:6px;">' + c.path.map(function (p, i) {
+              return '<div class="path-item"><span class="path-n">' + (i + 1) + '</span><span>' + esc(p) + '</span></div>';
+            }).join('') + '</div></div>' +
+          '<button class="btn btn-secondary btn-sm" data-action="career-set" data-id="' + c.id + '" style="width:100%;margin-top:16px;min-height:44px;">' +
+            (state.target === c.id ? '已設為目前的探索目標' : '設為目前探索目標') + '</button>' +
+        '</div>' +
+      '</div></section>';
+  }
+
+  /* ── modals ───────────────────────────────────────────────── */
+  var draft = null;
+  function openModal(html) {
+    var m = $('#modalRoot');
+    m.hidden = false;
+    m.innerHTML = '<div class="modal-backdrop" data-action="modal-close"></div><div class="modal" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.style.overflow = 'hidden';
+    var f = $('.modal input:not([type=hidden]), .modal select, .modal textarea', m);
+    if (f) f.focus();
+  }
+  function closeModal() { var m = $('#modalRoot'); m.hidden = true; m.innerHTML = ''; document.body.style.overflow = ''; draft = null; }
+
+  function openEntryModal(id) {
+    var e = id ? getEntry(id) : null;
+    draft = e
+      ? { entryId: e.id, type: e.type, date: e.date, title: e.title, org: e.org, desc: e.desc, skills: e.skills.join('、'), result: e.result }
+      : { entryId: null, type: 'self', date: '2026-09-19', title: '', org: '', desc: '', skills: '', result: '' };
+    openModal(tplEntryForm());
+  }
+  function tplEntryForm() {
+    var isEdit = !!draft.entryId;
+    return '<div class="modal-head"><h2 class="modal-title">' + (isEdit ? '編輯歷程紀錄' : '新增歷程紀錄') + '</h2>' +
+      '<p class="meta">新增的紀錄會立即成為能力診斷的證據來源。</p></div>' +
+      '<div class="modal-body">' +
+        '<div class="grid-2"><div class="field"><label for="eType">類型</label><select id="eType" class="input">' +
+          Object.keys(PTYPES).map(function (k) { return '<option value="' + k + '"' + (draft.type === k ? ' selected' : '') + '>' + PTYPES[k] + '</option>'; }).join('') + '</select></div>' +
+          '<div class="field"><label for="eDate">日期</label><input id="eDate" type="date" class="input num" value="' + esc(draft.date) + '"></div></div>' +
+        '<div class="field spaced"><label for="eTitle">標題</label><input id="eTitle" class="input" value="' + esc(draft.title) + '" placeholder="例如：線性代數第五章 5-1 完成"></div>' +
+        '<div class="grid-2 spaced"><div class="field"><label for="eOrg">單位／來源</label><input id="eOrg" class="input" value="' + esc(draft.org) + '" placeholder="例如：自主學習"></div>' +
+          '<div class="field"><label for="eResult">成果／分數（選填）</label><input id="eResult" class="input" value="' + esc(draft.result) + '" placeholder="例如：A+ 或 62 / 100"></div></div>' +
+        '<div class="field spaced"><label for="eDesc">描述</label><textarea id="eDesc" class="textarea" placeholder="做了什麼、學到什麼、哪裡還卡住...">' + esc(draft.desc) + '</textarea></div>' +
+        '<div class="field spaced"><label for="eSkills">技能標籤（以「、」分隔）</label><input id="eSkills" class="input" value="' + esc(draft.skills) + '" placeholder="例如：向量空間、矩陣運算"></div>' +
+        '<p class="notice">Prototype 提醒：這裡尚未串接後端，紀錄只存在於本次瀏覽階段。</p>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+      '<button class="btn btn-primary" data-action="p-save">' + (isEdit ? '儲存變更' : '新增紀錄') + '</button></div>';
+  }
+  function saveEntry() {
+    var title = $('#eTitle').value.trim();
+    if (!title) { toast('請先輸入標題。'); return; }
+    var isEdit = !!draft.entryId;
+    var editId = draft.entryId;
+    var skills = $('#eSkills').value.split(/[、,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var data = {
+      type: $('#eType').value, date: $('#eDate').value || '2026-09-19', title: title,
+      org: $('#eOrg').value.trim(), desc: $('#eDesc').value.trim(), skills: skills, result: $('#eResult').value.trim()
+    };
+    if (isEdit) { Object.assign(getEntry(editId), data); }
+    else { data.id = 'p' + Date.now(); data.min = 0; data.ev = '手動新增'; ENTRIES.unshift(data); }
+    closeModal(); render(true);
+    toast(isEdit ? '已儲存歷程紀錄。' : '已新增歷程紀錄。');
+  }
+  function openEntryDetail(id) {
+    var e = getEntry(id);
+    draft = { entryId: id };
+    openModal('<div class="modal-head"><h2 class="modal-title">' + esc(e.title) + '</h2>' +
+      '<p class="meta">' + PTYPES[e.type] + ' · ' + esc(e.org) + ' · ' + fmtDateFull(e.date) + (e.min ? ' · ' + e.min + ' 分鐘' : '') + '</p></div>' +
+      '<div class="modal-body">' +
+        (e.result ? '<div class="field"><span class="field-label">成果／分數</span><div class="static-val num">' + esc(e.result) + '</div></div>' : '') +
+        '<div class="field"><span class="field-label">描述</span><p style="font-size:14px;">' + esc(e.desc || '—') + '</p></div>' +
+        '<div class="field"><span class="field-label">技能標籤</span><div class="row" style="gap:6px;flex-wrap:wrap;">' + e.skills.map(function (s) { return '<span class="tag tag-plain">' + esc(s) + '</span>'; }).join('') + '</div></div>' +
+        '<div class="field"><span class="field-label">佐證來源</span><p class="meta">' + esc(e.ev || '—') + '</p></div>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn btn-ghost" data-action="p-delete">刪除紀錄</button>' +
+      '<button class="btn btn-secondary" data-action="modal-close" style="margin-left:auto;">關閉</button>' +
+      '<button class="btn btn-primary" data-action="p-edit" style="margin-left:0;">編輯</button></div>');
+  }
+  function deleteEntry() {
+    var id = draft.entryId;
+    for (var i = 0; i < ENTRIES.length; i++) if (ENTRIES[i].id === id) { ENTRIES.splice(i, 1); break; }
+    closeModal(); render(true); toast('已刪除歷程紀錄。');
+  }
+
+  /* ── events ───────────────────────────────────────────────── */
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-action]'); if (!el) return;
+    var a = el.dataset.action, id = el.dataset.id;
+    if (a === 'nav') { state.view = el.dataset.view; render(); return; }
+    if (a === 'p-filter') { state.pFilter = id; render(true); return; }
+    if (a === 'p-add') { openEntryModal(null); return; }
+    if (a === 'p-open') { openEntryDetail(id); return; }
+    if (a === 'p-edit') { var eid = draft.entryId; closeModal(); openEntryModal(eid); return; }
+    if (a === 'p-save') { saveEntry(); return; }
+    if (a === 'p-delete') { deleteEntry(); return; }
+    if (a === 'comp-toggle') { state.compOpen = state.compOpen === id ? null : id; render(true); return; }
+    if (a === 'diag-run') {
+      if (state.busy) return;
+      state.busy = 'diag'; render(true);
+      setTimeout(function () { state.busy = null; render(true); toast('已依最新歷程重新計算能力診斷。'); }, 900);
+      return;
+    }
+    if (a === 'map-filter') {
+      state.mapFilter = id;
+      var inf = nodeInfo(state.map.node);
+      if (inf && id !== 'all' && inf.node.status !== id) {
+        var sk = getSkill(state.map.dom, state.map.skill);
+        var vis = sk ? filterNodes(sk.nodes) : [];
+        if (vis.length) state.map.node = vis[0].id;
+      }
+      render(true); return;
+    }
+    if (a === 'map-dom') {
+      state.map.dom = id; var dm = getDom(id);
+      state.map.skill = dm.skills[0].id;
+      state.map.node = dm.skills[0].nodes[0].id; render(true); return;
+    }
+    if (a === 'map-skill') {
+      state.map.skill = id; var s = getSkill(state.map.dom, id);
+      var vis2 = filterNodes(s.nodes); state.map.node = (vis2[0] || s.nodes[0]).id; render(true); return;
+    }
+    if (a === 'map-node') { state.map.node = id; render(true); return; }
+    if (a === 'map-queue') {
+      var info = nodeInfo(id); if (!info) return;
+      info.node.queued = true;
+      toast('已將「' + info.node.name + '」排入本週學習任務。');
+      render(true); return;
+    }
+    if (a === 'career-select') { state.career = id; render(true); return; }
+    if (a === 'career-set') {
+      state.target = id; toast('已將「' + getCareer(id).name + '」設為目前探索目標。'); render(true); return;
+    }
+    if (a === 'career-run') {
+      if (state.busy) return;
+      state.busy = 'career'; render(true);
+      setTimeout(function () {
+        state.busy = null;
+        var t = new Date();
+        state.analysisAt = '分析時間 ' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+        render(true); toast('已重新產生模擬職涯分析。');
+      }, 900);
+      return;
+    }
+    if (a === 'modal-close') { closeModal(); return; }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('#modalRoot').hidden) closeModal();
+  });
+
+  if (['portfolio', 'diagnosis', 'map', 'career'].indexOf(state.view) < 0) state.view = 'portfolio';
+  render();
+})();
+</script>
+</body>
+</html>

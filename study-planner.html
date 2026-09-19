@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>拾級 · 升學準備學習管理系統</title>
+<style>
+  :root{
+    --bg: oklch(99% 0.002 240);
+    --surface: oklch(100% 0 0);
+    --fg: oklch(18% 0.012 250);
+    --muted: oklch(54% 0.012 250);
+    --border: oklch(92% 0.005 250);
+    --accent: oklch(58% 0.18 255);
+    --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
+    --fg-soft: color-mix(in oklch, var(--fg) 6%, transparent);
+    --ok: oklch(56% 0.13 155);
+    --ok-soft: color-mix(in oklch, var(--ok) 14%, transparent);
+    --warn: oklch(62% 0.13 70);
+    --warn-soft: color-mix(in oklch, var(--warn) 18%, transparent);
+    --danger: oklch(56% 0.17 25);
+    --danger-soft: color-mix(in oklch, var(--danger) 14%, transparent);
+    --t-understand: oklch(56% 0.15 255);
+    --t-practice: oklch(52% 0.10 200);
+    --t-recall: oklch(64% 0.13 75);
+    --t-test: oklch(58% 0.16 25);
+    --t-review: oklch(55% 0.12 155);
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 2px oklch(18% 0.012 250 / .05), 0 12px 32px oklch(18% 0.012 250 / .10);
+    --fs-h1: 24px; --fs-h2: 17px; --fs-h3: 15px; --fs-body: 14px; --fs-meta: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--font-body); font-size: var(--fs-body); line-height: 1.55;
+    text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+  }
+  img, svg { display: block; max-width: 100%; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  p { text-wrap: pretty; margin: 0; }
+  h1, h2, h3, h4 { text-wrap: balance; margin: 0; font-family: var(--font-display); }
+  .h1, h1 { font-size: var(--fs-h1); font-weight: 650; letter-spacing: -0.02em; }
+  .h2, h2 { font-size: var(--fs-h2); font-weight: 620; letter-spacing: -0.01em; }
+  .h3, h3 { font-size: var(--fs-h3); font-weight: 600; }
+  .meta { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--muted); }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .spacer { flex: 1; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .spaced { margin-top: 18px; }
+
+  /* ── app shell ─────────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar {
+    position: sticky; top: 0; height: 100vh; z-index: 20;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px; border-bottom: 1px solid var(--border); }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--fg);
+    color: var(--surface); display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 15px; flex: none;
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-text strong { font-family: var(--font-display); font-size: 16px; letter-spacing: -0.01em; }
+  .brand-text em { font-style: normal; font-size: 11px; color: var(--muted); }
+  .nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent;
+    color: var(--muted); font-size: 14px; transition: background .14s ease, color .14s ease;
+  }
+  .nav-item .ico { width: 16px; height: 16px; flex: none; }
+  .nav-item:hover { background: var(--fg-soft); color: var(--fg); }
+  .nav-item[aria-current="page"] { background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; }
+  .nav-count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .nav-item[aria-current="page"] .nav-count { color: color-mix(in oklch, var(--accent) 68%, var(--fg)); }
+  .nav-group-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--muted); padding: 14px 22px 2px; margin: 0; }
+  a.nav-item { text-decoration: none; }
+  .sidebar-foot { margin-top: auto; padding: 16px 18px 20px; border-top: 1px solid var(--border); }
+  .foot-num { font-family: var(--font-display); font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .appbar {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in oklch, var(--bg) 88%, transparent); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 16px 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .appbar h1 { font-size: 21px; }
+  .appbar-actions { display: flex; gap: 8px; }
+  .view { padding: 24px 32px 88px; width: 100%; max-width: 1120px; }
+  .view-section { display: flex; flex-direction: column; gap: 20px; }
+  .foot-note { padding-top: 4px; }
+
+  /* ── buttons ───────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 10px 18px; border-radius: var(--radius);
+    border: 1px solid transparent; font-size: 14px; font-weight: 550; letter-spacing: -0.005em;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .05s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-sm { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+  .btn-primary { background: color-mix(in oklch, var(--accent) 90%, black); color: var(--surface); border-color: color-mix(in oklch, var(--accent) 90%, black); }
+  .btn-primary:hover { background: color-mix(in oklch, var(--accent) 82%, black); border-color: color-mix(in oklch, var(--accent) 82%, black); }
+  .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+  .btn-secondary:hover { border-color: color-mix(in oklch, var(--fg) 45%, transparent); }
+  .btn-ghost { background: transparent; color: var(--muted); border-color: transparent; padding-inline: 8px; }
+  .btn-ghost:hover { color: var(--fg); background: var(--fg-soft); }
+  .btn:disabled { opacity: .45; }
+
+  /* ── card / surfaces ───────────────────────────────────────── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
+  .list-card { padding: 8px 22px 14px; }
+  .list-head { padding: 14px 0 6px; }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 20px 0; }
+
+  /* ── progress ──────────────────────────────────────────────── */
+  .progress-hero { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 32px; align-items: center; }
+  .progress-pct { font-family: var(--font-display); font-size: 58px; line-height: 1; font-weight: 650; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; margin: 6px 0 8px; }
+  .progress-pct .pct { font-size: 26px; color: var(--muted); margin-left: 4px; }
+  .bar { height: 8px; border-radius: 999px; background: var(--fg-soft); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .35s ease; }
+  .bar-lg { height: 10px; }
+  .bar-sm { height: 6px; }
+  .type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+
+  /* ── pills / tags ──────────────────────────────────────────── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg));
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; white-space: nowrap;
+  }
+  .pill-ok { background: var(--ok-soft); color: color-mix(in oklch, var(--ok) 64%, var(--fg)); }
+  .pill-warn { background: var(--warn-soft); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); }
+  .pill-rec { background: var(--danger-soft); color: color-mix(in oklch, var(--danger) 64%, var(--fg)); }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+    border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 11.5px; white-space: nowrap;
+  }
+  .tag-moved { border-color: color-mix(in oklch, var(--warn) 45%, var(--border)); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  /* ── tasks ─────────────────────────────────────────────────── */
+  .tasks { display: flex; flex-direction: column; }
+  .task { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .task:first-child { border-top: 0; }
+  .check {
+    width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border);
+    background: var(--surface); display: grid; place-items: center; color: transparent; flex: none;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .check:hover { border-color: var(--accent); }
+  .check[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+  .check svg { width: 14px; height: 14px; }
+  .task-time { width: 96px; flex: none; font-size: 13px; color: var(--fg); }
+  .task-time .dash { color: var(--muted); margin: 0 3px; }
+  .task-body { flex: 1; min-width: 170px; display: flex; flex-direction: column; gap: 1px; }
+  .task-sub { font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
+  .task-title { font-size: 14.5px; font-weight: 550; }
+  .task-min { width: 48px; flex: none; text-align: right; font-size: 13px; color: var(--fg); }
+  .task-min span { color: var(--muted); font-size: 11px; margin-left: 1px; }
+  .task-actions { margin-left: auto; display: flex; gap: 2px; flex: none; }
+  .task.is-done .task-title { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .task.is-done .task-time, .task.is-done .task-min { color: var(--muted); }
+  .day-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 2px 2px 0; }
+
+  /* ── week ──────────────────────────────────────────────────── */
+  .cov-head { align-items: flex-start; }
+  .cov-total { font-family: var(--font-display); font-size: 40px; font-weight: 650; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cov-total .pct { font-size: 18px; color: var(--muted); margin-left: 2px; }
+  .cov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px 24px; margin-top: 20px; }
+  .cov-row { display: flex; flex-direction: column; gap: 7px; }
+  .cov-name { font-size: 13.5px; font-weight: 550; display: flex; align-items: center; gap: 6px; }
+  .cov-count { font-size: 12.5px; color: var(--muted); }
+  .cov-row .pill { align-self: flex-start; }
+  .cov-note { margin-top: 18px; }
+  .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+  .week-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 220px; }
+  .week-col.is-today { border-color: color-mix(in oklch, var(--accent) 45%, var(--border)); }
+  .week-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .week-head .wd { font-size: 13px; font-weight: 600; }
+  .week-col.is-today .week-head { color: color-mix(in oklch, var(--accent) 68%, var(--fg)); }
+  .week-body { display: flex; flex-direction: column; gap: 7px; }
+  .week-empty { color: var(--muted); font-size: 13px; padding-top: 6px; }
+  .chip { border: 1px solid var(--border); border-radius: 9px; padding: 7px 9px; display: flex; flex-direction: column; gap: 2px; background: var(--surface); }
+  .chip .chip-subj { font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .chip .chip-title { font-size: 12px; color: var(--fg); }
+  .chip .chip-time { font-size: 11px; color: var(--muted); }
+  .chip.is-done { opacity: .6; }
+  .chip.is-done .chip-title { text-decoration: line-through; }
+  .chip.is-moved { border-style: dashed; }
+
+  /* ── rules ─────────────────────────────────────────────────── */
+  .rules-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .rule-row { display: flex; align-items: center; gap: 18px; padding: 16px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .rule-name { flex: 1; min-width: 150px; font-size: 14.5px; font-weight: 550; display: flex; align-items: center; gap: 8px; }
+  .rule-cell { min-width: 96px; display: flex; flex-direction: column; }
+  .rule-cell b { font-size: 14px; font-weight: 600; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .rule-cell span { font-size: 11px; color: var(--muted); }
+  .rule-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .rule-row.is-off .rule-name, .rule-row.is-off .rule-cell { opacity: .5; }
+  .switch { width: 40px; height: 23px; border-radius: 999px; border: 1px solid var(--border); background: var(--fg-soft); position: relative; flex: none; transition: background .15s ease, border-color .15s ease; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); transition: transform .15s ease; }
+  .switch[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+  .switch[aria-pressed="true"]::after { transform: translateX(17px); border-color: transparent; }
+  .notice { background: var(--fg-soft); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--fg); margin: 16px 0 0; }
+  .notice-warn { background: var(--warn-soft); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); }
+  .static-val { padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--fg-soft); font-weight: 550; }
+
+  /* ── timetable ─────────────────────────────────────────────── */
+  .tt-wrap { overflow-x: auto; }
+  .tt { display: grid; grid-template-columns: 64px repeat(5, minmax(0, 1fr)); gap: 6px; min-width: 620px; }
+  .tt-corner { }
+  .tt-head { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: center; padding-bottom: 6px; }
+  .tt-slot { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); padding-top: 16px; }
+  .tt-cell { min-height: 66px; border: 1px dashed var(--border); border-radius: 10px; background: transparent; transition: border-color .14s ease, background .14s ease; }
+  .tt-cell:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .tt-class { min-height: 66px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 9px 10px; text-align: left; display: flex; flex-direction: column; gap: 2px; transition: border-color .14s ease, background .14s ease; }
+  .tt-class:hover { border-color: color-mix(in oklch, var(--fg) 40%, transparent); background: var(--fg-soft); }
+  .tt-class b { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+  .tt-class span { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .tt-legend { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  /* ── journal ───────────────────────────────────────────────── */
+  .journal-head { align-items: flex-start; margin-bottom: 20px; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label { font-size: 13px; color: var(--fg); font-weight: 550; }
+  .input, .textarea {
+    width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--fg); font: inherit; font-size: 14px;
+  }
+  .input:focus, .textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .textarea { resize: vertical; line-height: 1.6; }
+  .textarea-wrap { position: relative; }
+  .textarea-wrap .textarea { min-height: 150px; padding-bottom: 58px; }
+  .mic {
+    position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center;
+    color: var(--muted); box-shadow: var(--shadow); transition: color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .mic:hover { color: var(--accent); border-color: var(--accent); }
+  .mic.is-rec { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+  .mic svg { width: 18px; height: 18px; }
+  .journal-actions { display: flex; justify-content: flex-end; margin-top: 22px; }
+  .entries { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+  .entry { border-top: 1px solid var(--border); padding-top: 14px; }
+  .entry:first-child { border-top: 0; padding-top: 0; }
+  .entry h3 { font-size: 13.5px; margin-bottom: 6px; }
+  .entry dl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 13px; }
+  .entry dt { color: var(--muted); font-size: 12px; }
+  .entry dd { margin: 0; }
+
+  /* ── modal ─────────────────────────────────────────────────── */
+  #modalRoot[hidden] { display: none; }
+  .modal-backdrop { position: fixed; inset: 0; background: oklch(18% 0.012 250 / .35); backdrop-filter: blur(2px); z-index: 40; }
+  .modal {
+    position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+  }
+  .modal-head { padding: 22px 24px 0; }
+  .modal-title { font-size: 18px; }
+  .modal-head .meta { margin-top: 4px; }
+  .modal-body { padding: 20px 24px 4px; }
+  .modal-body .field + .field { margin-top: 14px; }
+  .field-label { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+  .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+  .choice {
+    display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; min-height: 38px;
+    border: 1px solid var(--border); border-radius: 999px; font-size: 13.5px; color: var(--fg); background: var(--surface);
+    transition: border-color .14s ease, background .14s ease, color .14s ease;
+  }
+  .choice:hover { border-color: color-mix(in oklch, var(--fg) 35%, transparent); }
+  .choice.is-selected { border-color: var(--accent); background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; }
+  .slot-picker { margin-top: 18px; }
+  .load { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .modal-actions { display: flex; align-items: center; gap: 8px; padding: 20px 24px 22px; }
+  .modal-actions .btn-primary { margin-left: auto; }
+
+  /* ── toast ─────────────────────────────────────────────────── */
+  .toast-root { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+  .toast { background: var(--fg); color: var(--surface); padding: 11px 16px; border-radius: 10px; font-size: 13.5px; box-shadow: var(--shadow); opacity: 1; transition: opacity .3s ease, transform .3s ease; }
+  .toast.out { opacity: 0; transform: translateY(6px); }
+
+  @media (max-width: 920px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .brand { border-bottom: 0; padding: 4px 6px; }
+    .brand-text { display: none; }
+    .nav { flex-direction: row; padding: 0; gap: 2px; }
+    .nav-item { white-space: nowrap; padding: 8px 12px; }
+    .nav-count { display: none; }
+    .nav-group-label { display: none; }
+    .sidebar-foot { display: none; }
+    .appbar, .view { padding-inline: 18px; }
+    .progress-hero { grid-template-columns: 1fr; gap: 20px; }
+    .week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .week-col { min-height: 0; }
+  }
+  @media (max-width: 560px) {
+    .week { grid-template-columns: 1fr; }
+    .cov-grid { grid-template-columns: 1fr; }
+    .task-actions { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="brand">
+      <span class="brand-mark">拾</span>
+      <span class="brand-text"><strong>拾級</strong><em>升學準備學習管理</em></span>
+    </div>
+    <nav class="nav" id="nav" data-od-id="nav" aria-label="主要導覽"></nav>
+    <p class="nav-group-label">歷程與探索</p>
+    <nav class="nav" aria-label="歷程與探索">
+      <a class="nav-item" href="career-compass.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M14 4v4h4"/><path d="M8 12h8M8 16h6"/></svg><span>學習歷程</span></a>
+      <a class="nav-item" href="career-compass.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-7 4 14 2.5-8 1.5 1h3.5"/></svg><span>能力診斷</span></a>
+      <a class="nav-item" href="career-compass.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7.4 7.6l3.2 8.8M16.6 7.6l-3.2 8.8"/></svg><span>知識地圖</span></a>
+      <a class="nav-item" href="career-compass.html"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>AI 職涯探索</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="row-between">
+        <span class="meta">本週科目覆蓋率</span>
+        <span class="meta" id="footSub">—</span>
+      </div>
+      <div class="row-between" style="margin: 6px 0 8px;">
+        <span class="foot-num num" id="footPct">0%</span>
+      </div>
+      <div class="bar"><i id="footBar" style="width:0%"></i></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="appbar" data-od-id="appbar">
+      <div>
+        <h1 id="pageTitle">今天的學習</h1>
+        <p class="meta" id="pageSub"></p>
+      </div>
+      <div class="appbar-actions" id="appbarActions"></div>
+    </header>
+    <div class="view" id="view"></div>
+  </main>
+</div>
+<div id="modalRoot" hidden></div>
+<div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SUBJECTS = {
+    lin:  { name: '線性代數', short: '線代' },
+    ds:   { name: '資料結構', short: '資結' },
+    os:   { name: '作業系統', short: 'OS' },
+    algo: { name: '演算法',   short: '演算' },
+    eng:  { name: '英文',     short: '英文' }
+  };
+  var TYPES = ['理解', '練習', '回想', '測驗', '複習'];
+  var TYPE_VAR = { '理解': '--t-understand', '練習': '--t-practice', '回想': '--t-recall', '測驗': '--t-test', '複習': '--t-review' };
+  var WEEK = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+  var DATES = ['9/14', '9/15', '9/16', '9/17', '9/18', '9/19', '9/20'];
+  var TODAY = 4;
+  var SLOTS = ['08:10', '10:10', '13:30', '15:30', '18:30'];
+  var TIME_OPTS = ['08:10', '09:00', '10:00', '10:10', '11:40', '12:00', '13:30', '14:20', '15:20', '15:30', '17:20', '18:30', '19:30', '20:00', '20:20', '21:40'];
+  var MOCK_SPEECH = '今天線性代數完成第五章 5-1，但 5-2 的特徵值還是不太懂，明天想先重新看例題。';
+
+  function ls(key, val) {
+    try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) {}
+    return null;
+  }
+
+  var state = {
+    view: ls('shiji:view') || 'today',
+    focusJournal: false,
+    recording: false,
+    recTimer: null,
+    recSec: 0,
+    rules: [
+      { id: 'lin',  perWeek: 3, minutes: 90,  active: true },
+      { id: 'ds',   perWeek: 3, minutes: 90,  active: true },
+      { id: 'os',   perWeek: 2, minutes: 90,  active: true },
+      { id: 'algo', perWeek: 2, minutes: 120, active: true },
+      { id: 'eng',  perWeek: 2, minutes: 60,  active: true }
+    ],
+    tasks: [
+      { id: 'm1', sid: 'ds',   title: '陣列與字串題目 1–15', type: '練習', start: '10:10', end: '11:40', min: 90, day: 0, status: 'done' },
+      { id: 'm2', sid: 'lin',  title: '第四章 向量空間 理解', type: '理解', start: '18:30', end: '20:00', min: 90, day: 0, status: 'done' },
+      { id: 't1', sid: 'ds',   title: '鏈結串列 練習', type: '練習', start: '15:30', end: '17:00', min: 90, day: 1, status: 'done' },
+      { id: 't2', sid: 'os',   title: 'Chapter 1 複習', type: '複習', start: '09:00', end: '10:00', min: 60, day: 1, status: 'done' },
+      { id: 'w1', sid: 'lin',  title: '第四章例題演練', type: '練習', start: '19:00', end: '20:30', min: 90, day: 2, status: 'done' },
+      { id: 'f1', sid: 'algo', title: '回溯法概念整理', type: '回想', start: '08:00', end: '09:00', min: 60, day: 4, status: 'done' },
+      { id: 'f4', sid: 'lin',  title: '第五章 5-1 理解', type: '理解', start: '10:30', end: '12:00', min: 90, day: 4, status: 'pending' },
+      { id: 'f2', sid: 'eng',  title: '閱讀測驗 2 篇', type: '練習', start: '13:00', end: '13:30', min: 30, day: 4, status: 'done' },
+      { id: 'f5', sid: 'ds',   title: 'Binary Tree 題目 1–10', type: '練習', start: '19:00', end: '20:30', min: 90, day: 4, status: 'pending' },
+      { id: 'f3', sid: 'os',   title: 'Chapter 3 複習', type: '複習', start: '20:40', end: '21:40', min: 60, day: 4, status: 'done' },
+      { id: 's1', sid: 'algo', title: '圖論 回想測驗', type: '回想', start: '14:00', end: '15:00', min: 60, day: 5, status: 'pending' },
+      { id: 'u1', sid: 'eng',  title: '單字與片語複習', type: '複習', start: '10:00', end: '10:30', min: 30, day: 6, status: 'pending' }
+    ],
+    classes: [
+      { id: 'c1', day: 0, start: '08:10', end: '10:00', name: '資料結構', room: '工學院 204' },
+      { id: 'c2', day: 0, start: '13:30', end: '15:20', name: '通識：科技與社會', room: '人文 110' },
+      { id: 'c3', day: 1, start: '08:10', end: '10:00', name: '作業系統', room: '工學院 301' },
+      { id: 'c4', day: 1, start: '15:30', end: '17:20', name: '演算法', room: '工學院 301' },
+      { id: 'c5', day: 2, start: '10:10', end: '12:00', name: '線性代數', room: '理學院 105' },
+      { id: 'c6', day: 3, start: '10:10', end: '12:00', name: '演算法演習', room: '工學院 208' },
+      { id: 'c7', day: 4, start: '15:30', end: '17:20', name: '英文（通識）', room: '人文 302' }
+    ],
+    journalDraft: { done: '', problem: '', plan: '' },
+    entries: [
+      { date: '9月16日（週三）', done: '線性代數第四章例題做完一輪，英文閱讀測驗一篇。', problem: '矩陣運算速度還是不夠快，特徵值觀念有點模糊。', plan: '週五把第五章 5-1 讀完，並加練幾題回想。' }
+    ]
+  };
+
+  var draft = null;
+
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function getTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }
+  function addMin(hhmm, min) { var p = hhmm.split(':').map(Number); var t = p[0] * 60 + p[1] + min; return ('0' + Math.floor(t / 60) % 24).slice(-2) + ':' + ('0' + t % 60).slice(-2); }
+  function visible(t) { return t.status !== 'cancelled' && !t.nextWeek; }
+  function tasksOn(day) { return state.tasks.filter(function (t) { return t.day === day && visible(t); }).sort(function (a, b) { return a.start.localeCompare(b.start); }); }
+  function fmtDur(min) { return Math.floor(min / 60) + ' 小時' + (min % 60 ? ' ' + (min % 60) + ' 分' : ''); }
+
+  function coverageFor(sid) {
+    var rule = state.rules.find(function (r) { return r.id === sid; });
+    var target = rule && rule.active ? rule.perWeek : 0;
+    var done = state.tasks.filter(function (t) { return t.sid === sid && t.status === 'done' && !t.nextWeek; }).length;
+    return { done: done, target: target, active: !!(rule && rule.active) };
+  }
+  function coverage() {
+    var done = 0, target = 0, unmet = [];
+    state.rules.filter(function (r) { return r.active; }).forEach(function (r) {
+      var c = coverageFor(r.id); done += c.done; target += c.target;
+      if (c.done < c.target) unmet.push(r.id);
+    });
+    return { done: done, target: target, pct: target ? Math.round(done / target * 100) : 0, unmet: unmet };
+  }
+
+  function dayLoad(day, excludeId) {
+    return state.tasks.filter(function (t) { return t.day === day && visible(t) && t.id !== excludeId; })
+      .reduce(function (s, t) { return s + t.min; }, 0);
+  }
+  function loadTone(min) { return min <= 300 ? 'ok' : 'warn'; }
+  function loadLabel(min) { return min < 180 ? '輕' : min <= 300 ? '適中' : '偏重'; }
+
+  function toast(msg) {
+    var root = $('#toastRoot');
+    var d = document.createElement('div');
+    d.className = 'toast'; d.textContent = msg; root.appendChild(d);
+    setTimeout(function () { d.classList.add('out'); setTimeout(function () { d.remove(); }, 320); }, 2400);
+  }
+
+  /* ── nav + appbar ─────────────────────────────────────────── */
+  var ICONS = {
+    today: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+    week: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+    rules: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    timetable: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',
+    journal: '<path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M9 8h7M9 12h7"/>'
+  };
+  var NAV = [
+    { id: 'today', label: '今日' }, { id: 'week', label: '本週' },
+    { id: 'rules', label: '固定任務' }, { id: 'timetable', label: '課表' },
+    { id: 'journal', label: '學習日誌' }
+  ];
+
+  function renderNav() {
+    var cov = coverage();
+    var remain = tasksOn(TODAY).filter(function (t) { return t.status !== 'done'; }).length;
+    var counts = {
+      today: remain ? remain + ' 項' : '完成',
+      week: cov.unmet.length ? cov.unmet.length + ' 科未達' : '達標',
+      rules: state.rules.filter(function (r) { return r.active; }).length + ' 條',
+      timetable: state.classes.length + ' 門',
+      journal: state.entries.length ? state.entries.length + ' 篇' : ''
+    };
+    $('#nav').innerHTML = NAV.map(function (it) {
+      return '<button class="nav-item" data-action="nav" data-view="' + it.id + '"' + (state.view === it.id ? ' aria-current="page"' : '') + '>' +
+        '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + ICONS[it.id] + '</svg>' +
+        '<span>' + it.label + '</span>' + (counts[it.id] ? '<span class="nav-count">' + counts[it.id] + '</span>' : '') + '</button>';
+    }).join('');
+  }
+  function renderFoot() {
+    var cov = coverage();
+    $('#footPct').textContent = cov.pct + '%';
+    $('#footSub').textContent = cov.done + ' / ' + cov.target + ' 次';
+    $('#footBar').style.width = cov.pct + '%';
+  }
+
+  var CFG = {
+    today: { title: '今天的學習', sub: '週五 · 2026年9月18日', actions: '' },
+    week: { title: '本週排程', sub: '9月14日 – 9月20日', actions: '' },
+    rules: { title: '固定學習規則', sub: '設定每科每週需要接觸的次數', actions: '<button class="btn btn-primary" data-action="rule-add">新增固定規則</button>' },
+    timetable: { title: '我的課表', sub: '固定課程時段不可安排讀書', actions: '<button class="btn btn-secondary" data-action="import-timetable">匯入課表</button><button class="btn btn-primary" data-action="class-add">新增課程</button>' },
+    journal: { title: '學習日誌', sub: '週五 · 2026年9月18日', actions: '' }
+  };
+
+  function render() {
+    var cfg = CFG[state.view] || CFG.today;
+    $('#pageTitle').textContent = cfg.title;
+    $('#pageSub').textContent = cfg.sub;
+    $('#appbarActions').innerHTML = cfg.actions;
+    renderNav(); renderFoot();
+    var body = { today: tplToday, week: tplWeek, rules: tplRules, timetable: tplTimetable, journal: tplJournal }[state.view];
+    $('#view').innerHTML = body();
+    window.scrollTo({ top: 0 });
+    ls('shiji:view', state.view);
+    if (state.view === 'journal' && state.focusJournal) { state.focusJournal = false; var ta = $('#jDone'); if (ta) ta.focus(); }
+  }
+
+  /* ── today ────────────────────────────────────────────────── */
+  function taskRow(t) {
+    var done = t.status === 'done';
+    var s = SUBJECTS[t.sid];
+    return '<div class="task' + (done ? ' is-done' : '') + '" data-od-id="task-' + t.id + '">' +
+      '<button class="check" data-action="toggle-task" data-id="' + t.id + '" aria-pressed="' + done + '" aria-label="' + (done ? '取消完成' : '標記完成') + '：' + esc(s.name) + ' ' + esc(t.title) + '">' +
+        (done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>' : '') +
+      '</button>' +
+      '<span class="task-time num">' + t.start + '<span class="dash">–</span>' + t.end + '</span>' +
+      '<div class="task-body"><span class="task-sub">' + esc(s.name) + '</span>' +
+        '<span class="task-title">' + esc(t.title) + (t.moved ? ' <span class="tag tag-moved">已調整</span>' : '') + '</span></div>' +
+      '<span class="tag"><i class="dot" style="background:var(' + TYPE_VAR[t.type] + ')"></i>' + t.type + '</span>' +
+      '<span class="task-min num">' + t.min + '<span>分</span></span>' +
+      '<div class="task-actions">' + (done ? '' :
+        '<button class="btn btn-ghost btn-sm" data-action="reschedule" data-id="' + t.id + '">延後</button>' +
+        '<button class="btn btn-ghost btn-sm" data-action="adjust" data-id="' + t.id + '">調整排程</button>') + '</div></div>';
+  }
+  function tplToday() {
+    var list = tasksOn(TODAY);
+    var total = list.reduce(function (s, t) { return s + t.min; }, 0);
+    var doneMin = list.filter(function (t) { return t.status === 'done'; }).reduce(function (s, t) { return s + t.min; }, 0);
+    var doneCount = list.filter(function (t) { return t.status === 'done'; }).length;
+    var pct = total ? Math.round(doneMin / total * 100) : 0;
+    var subs = {}; list.forEach(function (t) { subs[t.sid] = 1; });
+    var typeCounts = TYPES.map(function (ty) { return [ty, list.filter(function (t) { return t.type === ty; }).length]; }).filter(function (x) { return x[1]; });
+    return '<section class="view-section" data-od-id="view-today">' +
+      '<div class="card progress-card" data-od-id="today-progress"><div class="progress-hero">' +
+        '<div><p class="meta">今日學習進度</p><p class="progress-pct">' + pct + '<span class="pct">%</span></p>' +
+        '<p class="meta">已完成 ' + doneCount + ' / ' + list.length + ' 項 · ' + doneMin + ' / ' + total + ' 分鐘</p></div>' +
+        '<div><div class="bar bar-lg"><i style="width:' + pct + '%"></i></div>' +
+          '<div class="type-chips">' + typeCounts.map(function (x) { return '<span class="tag"><i class="dot" style="background:var(' + TYPE_VAR[x[0]] + ')"></i>' + x[0] + ' ' + x[1] + '</span>'; }).join('') + '</div>' +
+          '<p class="meta">今天交錯安排 ' + Object.keys(subs).length + ' 個科目（間隔效應），並混合理解、練習與回想等提取練習。</p>' +
+        '</div></div></div>' +
+      '<div class="card list-card" data-od-id="today-tasks">' +
+        '<div class="row-between list-head"><h2>今日任務</h2><span class="meta">' + list.length + ' 項 · 共 ' + fmtDur(total) + '</span></div>' +
+        '<div class="tasks">' + (list.length ? list.map(taskRow).join('') : '<p class="empty">今天沒有安排任務。</p>') + '</div></div>' +
+      '<div class="day-foot"><p class="meta">完成今日任務後，寫下學習日誌，記錄今天理解與卡住的地方。</p>' +
+        '<button class="btn btn-primary" data-action="end-day">今日結束</button></div>' +
+    '</section>';
+  }
+
+  /* ── week ─────────────────────────────────────────────────── */
+  function covRow(r) {
+    var c = coverageFor(r.id);
+    var met = r.active && c.done >= c.target && c.target > 0;
+    var pct = c.target ? Math.min(100, Math.round(c.done / c.target * 100)) : 0;
+    var stateTxt = !r.active ? '未計入' : (c.target === 0 ? '未設定' : met ? '已達標' : (c.done === 0 ? '完全未接觸' : '未達標'));
+    return '<div class="cov-row" data-od-id="cov-' + r.id + '">' +
+      '<div class="row-between"><span class="cov-name">' + esc(SUBJECTS[r.id].name) + (r.active ? '' : ' <span class="tag">已停用</span>') + '</span>' +
+      '<span class="cov-count num">' + c.done + ' / ' + c.target + '</span></div>' +
+      '<div class="bar bar-sm"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="pill ' + (met ? 'pill-ok' : 'pill-warn') + '">' + stateTxt + '</span></div>';
+  }
+  function weekChip(t) {
+    var done = t.status === 'done';
+    return '<div class="chip' + (done ? ' is-done' : '') + (t.moved ? ' is-moved' : '') + '">' +
+      '<span class="chip-subj"><i class="dot" style="background:var(' + TYPE_VAR[t.type] + ')"></i>' + esc(SUBJECTS[t.sid].short) + '</span>' +
+      '<span class="chip-title">' + esc(t.title) + '</span>' +
+      '<span class="chip-time num">' + t.start + (t.moved ? ' · 已調整' : '') + '</span></div>';
+  }
+  function weekCol(i) {
+    var tasks = tasksOn(i);
+    return '<div class="week-col' + (i === TODAY ? ' is-today' : '') + '" data-od-id="day-' + i + '">' +
+      '<div class="week-head"><span class="wd">' + WEEK[i] + (i === TODAY ? ' · 今天' : '') + '</span><span class="num meta">' + DATES[i] + '</span></div>' +
+      '<div class="week-body">' + (tasks.length ? tasks.map(weekChip).join('') : '<p class="week-empty">—</p>') + '</div></div>';
+  }
+  function tplWeek() {
+    var cov = coverage();
+    return '<section class="view-section" data-od-id="view-week">' +
+      '<div class="card" data-od-id="coverage">' +
+        '<div class="row-between cov-head"><div><h2>本週科目覆蓋率</h2>' +
+        '<p class="meta">依「固定任務」規則計算每週需要接觸的次數，用來檢查是否有科目整週沒碰到。</p></div>' +
+        '<div class="cov-total">' + cov.pct + '<span class="pct">%</span></div></div>' +
+        '<div class="bar bar-lg" style="margin-top:16px;"><i style="width:' + cov.pct + '%"></i></div>' +
+        '<div class="cov-grid">' + state.rules.map(covRow).join('') + '</div>' +
+        '<p class="meta cov-note">' + (cov.unmet.length
+          ? '尚未達到本週接觸次數：' + cov.unmet.map(function (id) { return SUBJECTS[id].name; }).join('、') + '。'
+          : '所有啟用中的科目都已達到本週接觸次數。') + '</p>' +
+      '</div>' +
+      '<div class="week" data-od-id="week-grid">' + WEEK.map(function (_, i) { return weekCol(i); }).join('') + '</div>' +
+      '<p class="meta foot-note">任務依「間隔效應」分散在一週不同日子，同一科不集中一次讀完；已完成任務會即時反映在各科次數。</p>' +
+    '</section>';
+  }
+
+  /* ── rules ────────────────────────────────────────────────── */
+  function ruleRow(r) {
+    var total = r.perWeek * r.minutes;
+    return '<div class="rule-row' + (r.active ? '' : ' is-off') + '" data-od-id="rule-' + r.id + '">' +
+      '<span class="rule-name">' + esc(SUBJECTS[r.id].name) + (r.active ? '' : ' <span class="tag">已停用</span>') + '</span>' +
+      '<span class="rule-cell"><b>' + r.perWeek + ' 次 / 週</b><span>每週接觸次數</span></span>' +
+      '<span class="rule-cell"><b>' + r.minutes + ' 分鐘</b><span>每次時長</span></span>' +
+      '<span class="rule-cell"><b>' + fmtDur(total) + '</b><span>預估每週投入</span></span>' +
+      '<span class="rule-actions">' +
+        '<button class="btn btn-ghost btn-sm" data-action="rule-edit" data-id="' + r.id + '">編輯</button>' +
+        '<button class="switch" role="switch" aria-checked="' + r.active + '" aria-pressed="' + r.active + '" aria-label="' + esc(SUBJECTS[r.id].name) + '固定規則啟用" data-action="rule-toggle" data-id="' + r.id + '"></button>' +
+      '</span></div>';
+  }
+  function tplRules() {
+    return '<section class="view-section" data-od-id="view-rules">' +
+      '<div class="card" data-od-id="rules-list">' +
+        '<div class="rules-head"><div><h2>每週固定學習規則</h2>' +
+        '<p class="meta">這裡設定的是「每週需要接觸幾次」，不是指定哪一天；系統再依此分散安排到每日任務。</p></div></div>' +
+        '<div style="margin-top:14px;">' + state.rules.map(ruleRow).join('') + '</div>' +
+        '<p class="notice">範例：線性代數每週 3 次、每次 90 分鐘。考生可依進度調整次數，本週覆蓋率會立即重新計算。</p>' +
+      '</div></section>';
+  }
+
+  /* ── timetable ────────────────────────────────────────────── */
+  function tplTimetable() {
+    var head = '<span class="tt-corner"></span>' + WEEK.slice(0, 5).map(function (w, i) { return '<span class="tt-head">' + w + '<br>' + DATES[i] + '</span>'; }).join('');
+    var rows = SLOTS.map(function (slot) {
+      var row = ['<span class="tt-slot">' + slot + '</span>'];
+      for (var d = 0; d < 5; d++) {
+        var c = state.classes.find(function (x) { return x.day === d && x.start === slot; });
+        row.push(c
+          ? '<button class="tt-class" data-action="class-edit" data-id="' + c.id + '" data-od-id="class-' + c.id + '"><b>' + esc(c.name) + '</b><span>' + c.start + '–' + c.end + '</span>' + (c.room ? '<span>' + esc(c.room) + '</span>' : '') + '</button>'
+          : '<button class="tt-cell" data-action="class-add" data-day="' + d + '" data-slot="' + slot + '" aria-label="' + WEEK[d] + ' ' + slot + ' 新增課程"></button>');
+      }
+      return row.join('');
+    }).join('');
+    return '<section class="view-section" data-od-id="view-timetable">' +
+      '<div class="card" data-od-id="timetable-grid">' +
+        '<div class="row-between" style="margin-bottom:16px;"><div><h2>固定課程時間表</h2>' +
+        '<p class="meta">點擊空白時段可新增課程；點擊課程可編輯或刪除。</p></div>' +
+        '<span class="pill">不可安排讀書</span></div>' +
+        '<div class="tt-wrap"><div class="tt">' + head + rows + '</div></div>' +
+      '</div>' +
+      '<p class="meta foot-note">這些時段視為不可安排讀書的時間，重新排程時若選到衝堂時段會提出提醒。</p>' +
+    '</section>';
+  }
+
+  /* ── journal ──────────────────────────────────────────────── */
+  function entryRow(e) {
+    return '<div class="entry"><h3 class="num">' + esc(e.date) + '</h3>' +
+      '<dl><dt>完成</dt><dd>' + esc(e.done || '—') + '</dd>' +
+      '<dt>問題</dt><dd>' + esc(e.problem || '—') + '</dd>' +
+      '<dt>調整</dt><dd>' + esc(e.plan || '—') + '</dd></dl></div>';
+  }
+  function mmss() { return ('0' + Math.floor(state.recSec / 60)).slice(-2) + ':' + ('0' + state.recSec % 60).slice(-2); }
+  function tplJournal() {
+    var d = state.journalDraft;
+    var recPill = state.recording
+      ? '<span class="pill pill-rec" id="recPill"><span class="rec-dot"></span>正在錄音 ' + mmss() + '</span>'
+      : '<span class="pill" id="recPill">語音輸入待機</span>';
+    return '<section class="view-section" data-od-id="view-journal">' +
+      '<div class="card journal-card" data-od-id="journal-form">' +
+        '<div class="row-between journal-head"><div><h2>今天的學習日誌</h2><p class="meta">週五 · 2026年9月18日 · 自我調節學習的回顧與調整</p></div>' + recPill + '</div>' +
+        '<div class="field"><label for="jDone">今天完成了什麼？</label>' +
+          '<div class="textarea-wrap"><textarea id="jDone" class="textarea" placeholder="例如：線性代數完成第五章 5-1，資料結構寫完 Binary Tree 題目...">' + esc(d.done) + '</textarea>' +
+          '<button class="mic' + (state.recording ? ' is-rec' : '') + '" data-action="journal-mic" aria-label="' + (state.recording ? '停止錄音' : '開始語音輸入') + '">' +
+          (state.recording
+            ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>') +
+          '</button></div>' +
+          '<p class="meta">點擊麥克風開始／停止錄音（Prototype 示意，停止後會帶入示範文字）。</p></div>' +
+        '<div class="field spaced"><label for="jProblem">今天遇到什麼問題？</label>' +
+          '<textarea id="jProblem" class="textarea" style="min-height:90px;" placeholder="例如：5-2 的特徵值還是不太懂...">' + esc(d.problem) + '</textarea></div>' +
+        '<div class="field spaced"><label for="jPlan">明天想怎麼調整？</label>' +
+          '<textarea id="jPlan" class="textarea" style="min-height:90px;" placeholder="例如：明天先重新看例題，再練 3 題回想...">' + esc(d.plan) + '</textarea></div>' +
+        '<div class="journal-actions"><button class="btn btn-primary" data-action="journal-save">完成今日紀錄</button></div>' +
+      '</div>' +
+      '<div class="card" data-od-id="journal-history"><h2>過往日誌</h2>' +
+        (state.entries.length ? '<div class="entries">' + state.entries.map(entryRow).join('') + '</div>' : '<p class="empty">還沒有日誌紀錄。</p>') +
+      '</div></section>';
+  }
+
+  /* ── modals ───────────────────────────────────────────────── */
+  function openModal(html) {
+    var m = $('#modalRoot');
+    m.hidden = false;
+    m.innerHTML = '<div class="modal-backdrop" data-action="modal-close"></div><div class="modal" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.style.overflow = 'hidden';
+    var f = $('.modal input:not([type=radio]), .modal select, .modal textarea', m);
+    if (f) f.focus();
+  }
+  function closeModal() {
+    var m = $('#modalRoot');
+    m.hidden = true; m.innerHTML = '';
+    document.body.style.overflow = '';
+    draft = null;
+  }
+  function choice(name, value, label, checked) {
+    return '<label class="choice' + (checked ? ' is-selected' : '') + '"><input type="radio" name="' + name + '" value="' + value + '" class="sr-only"' + (checked ? ' checked' : '') + '><span>' + label + '</span></label>';
+  }
+  function loadMeter(day, excludeId) {
+    var min = dayLoad(day, excludeId);
+    return '<div class="load"><div class="row-between"><span class="field-label" style="margin:0;">' + WEEK[day] + ' · 目前讀書負荷</span>' +
+      '<span class="num meta">' + min + ' 分鐘 · ' + loadLabel(min) + '</span></div>' +
+      '<div class="bar"><i style="width:' + Math.min(100, Math.round(min / 480 * 100)) + '%;background:var(--' + loadTone(min) + ')"></i></div>' +
+      '<p class="meta">認知負荷提醒：避免把延期任務全部堆到同一天。</p></div>';
+  }
+  function conflictNote(day, slot) {
+    var c = state.classes.find(function (x) { return x.day === day && x.start === slot; });
+    return c ? '<p class="notice notice-warn">所選時段與固定課程「' + esc(c.name) + '」（' + c.start + '–' + c.end + '）衝堂，建議改選其他時段。</p>' : '';
+  }
+
+  function openRescheduleModal(id) {
+    draft = { taskId: id, reason: 'busy', method: 'tomorrow', day: Math.min(TODAY + 1, 6), slot: SLOTS[0] };
+    openModal(tplReschedule());
+    renderReschedExtra();
+  }
+  function tplReschedule() {
+    var t = getTask(draft.taskId);
+    return '<div class="modal-head"><h2 class="modal-title">今天無法完成這個任務</h2>' +
+      '<p class="meta">' + esc(SUBJECTS[t.sid].name) + ' · ' + esc(t.title) + ' · ' + t.min + ' 分鐘</p></div>' +
+      '<div class="modal-body">' +
+        '<div class="choice-group"><p class="field-label">原因</p><div class="choices">' +
+          choice('reason', 'busy', '臨時有事', draft.reason === 'busy') +
+          choice('reason', 'time', '時間不夠', draft.reason === 'time') +
+          choice('reason', 'hard', '任務比預期困難', draft.reason === 'hard') +
+          choice('reason', 'other', '其他', draft.reason === 'other') + '</div></div>' +
+        '<div class="choice-group spaced"><p class="field-label">處理方式</p><div class="choices">' +
+          choice('method', 'tomorrow', '移到明天', draft.method === 'tomorrow') +
+          choice('method', 'week', '找本週其他時間', draft.method === 'week') +
+          choice('method', 'nextweek', '延到下週', draft.method === 'nextweek') +
+          choice('method', 'cancel', '取消本次', draft.method === 'cancel') + '</div></div>' +
+        '<div id="reschedExtra"></div>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+      '<button class="btn btn-primary" data-action="resched-confirm">確認調整</button></div>';
+  }
+  function renderReschedExtra() {
+    var box = $('#reschedExtra'); if (!box) return;
+    var t = getTask(draft.taskId);
+    if (draft.method === 'tomorrow') {
+      draft.day = Math.min(TODAY + 1, 6);
+      box.innerHTML = loadMeter(draft.day, t.id) + conflictNote(draft.day, t.start);
+    } else if (draft.method === 'week') {
+      box.innerHTML = '<div class="slot-picker"><p class="field-label">選擇本週日期</p><div class="choices">' +
+        WEEK.map(function (w, i) { return '<button class="choice' + (draft.day === i ? ' is-selected' : '') + '" data-action="resched-day" data-day="' + i + '"><span>' + w + '</span></button>'; }).join('') + '</div>' +
+        '<p class="field-label spaced">選擇時段</p><div class="choices">' +
+        SLOTS.map(function (s) { return '<button class="choice' + (draft.slot === s ? ' is-selected' : '') + '" data-action="resched-slot" data-slot="' + s + '"><span>' + s + '</span></button>'; }).join('') + '</div></div>' +
+        loadMeter(draft.day, t.id) + conflictNote(draft.day, draft.slot);
+    } else if (draft.method === 'nextweek') {
+      box.innerHTML = '<p class="notice">任務會移到下週（9月21日 – 9月27日），本週不再出現，本週該科完成次數也不會增加。</p>';
+    } else {
+      box.innerHTML = '<p class="notice">取消本次後，任務不會再出現在今天；該科本週完成次數維持不變，覆蓋率會顯示為未達標。</p>';
+    }
+  }
+  function applyReschedule() {
+    var t = getTask(draft.taskId); if (!t) return;
+    if (draft.method === 'tomorrow') {
+      t.day = Math.min(TODAY + 1, 6); t.moved = true; t.status = 'pending';
+      toast('已將「' + t.title + '」移到' + WEEK[t.day] + '。');
+    } else if (draft.method === 'week') {
+      if (state.classes.find(function (c) { return c.day === draft.day && c.start === draft.slot; })) { toast('此時段與固定課程衝堂，請改選。'); return; }
+      t.day = draft.day; t.start = draft.slot; t.end = addMin(draft.slot, t.min); t.moved = true; t.status = 'pending';
+      toast('已將「' + t.title + '」改到' + WEEK[t.day] + ' ' + t.start + '。');
+    } else if (draft.method === 'nextweek') {
+      t.nextWeek = true; t.status = 'pending';
+      toast('已將「' + t.title + '」延到下週。');
+    } else {
+      t.status = 'cancelled';
+      toast('已取消本次「' + t.title + '」。');
+    }
+    closeModal(); render();
+  }
+  function openAdjustModal(id) {
+    var t = getTask(id);
+    draft = { taskId: id, day: t.day, slot: SLOTS.indexOf(t.start) >= 0 ? t.start : SLOTS[0] };
+    openModal(tplAdjust());
+  }
+  function tplAdjust() {
+    var t = getTask(draft.taskId);
+    return '<div class="modal-head"><h2 class="modal-title">調整排程</h2>' +
+      '<p class="meta">' + esc(SUBJECTS[t.sid].name) + ' · ' + esc(t.title) + '</p></div>' +
+      '<div class="modal-body">' +
+        '<p class="field-label">選擇日期</p><div class="choices">' +
+        WEEK.map(function (w, i) { return '<button class="choice' + (draft.day === i ? ' is-selected' : '') + '" data-action="adjust-day" data-day="' + i + '"><span>' + w + '</span></button>'; }).join('') + '</div>' +
+        '<p class="field-label spaced">選擇時段</p><div class="choices">' +
+        SLOTS.map(function (s) { return '<button class="choice' + (draft.slot === s ? ' is-selected' : '') + '" data-action="adjust-slot" data-slot="' + s + '"><span>' + s + '</span></button>'; }).join('') + '</div>' +
+        loadMeter(draft.day, t.id) + conflictNote(draft.day, draft.slot) +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+      '<button class="btn btn-primary" data-action="adjust-confirm">儲存調整</button></div>';
+  }
+  function applyAdjust() {
+    var t = getTask(draft.taskId);
+    if (state.classes.find(function (c) { return c.day === draft.day && c.start === draft.slot; })) { toast('此時段與固定課程衝堂，請改選。'); return; }
+    t.day = draft.day; t.start = draft.slot; t.end = addMin(draft.slot, t.min); t.moved = true; t.status = 'pending';
+    toast('已將「' + t.title + '」改到' + WEEK[t.day] + ' ' + t.start + '。');
+    closeModal(); render();
+  }
+
+  function openRuleModal(id) {
+    var r = id ? state.rules.find(function (x) { return x.id === id; }) : null;
+    draft = { ruleId: id || null, perWeek: r ? r.perWeek : 2, minutes: r ? r.minutes : 90 };
+    openModal(tplRule());
+  }
+  function tplRule() {
+    var isEdit = !!draft.ruleId;
+    return '<div class="modal-head"><h2 class="modal-title">' + (isEdit ? '編輯固定規則' : '新增固定規則') + '</h2>' +
+      '<p class="meta">設定每週需要接觸的次數，不是指定哪一天。</p></div>' +
+      '<div class="modal-body">' +
+        (isEdit
+          ? '<div class="field"><label>科目</label><div class="static-val">' + esc(SUBJECTS[draft.ruleId].name) + '</div></div>'
+          : '<div class="field"><label for="ruleSubject">科目</label><select id="ruleSubject" class="input">' + Object.keys(SUBJECTS).map(function (id) { return '<option value="' + id + '">' + esc(SUBJECTS[id].name) + '</option>'; }).join('') + '</select></div>') +
+        '<div class="grid-2 spaced"><div class="field"><label for="rulePerWeek">每週次數</label>' +
+          '<input id="rulePerWeek" type="number" min="1" max="7" class="input num" value="' + draft.perWeek + '"></div>' +
+          '<div class="field"><label for="ruleMinutes">每次分鐘</label>' +
+          '<input id="ruleMinutes" type="number" min="15" max="300" step="15" class="input num" value="' + draft.minutes + '"></div></div>' +
+        '<p class="notice">例：每週 3 次、每次 90 分鐘，系統會依間隔效應把接觸次數分散到不同天。</p>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+      '<button class="btn btn-primary" data-action="rule-save">儲存規則</button></div>';
+  }
+  function saveRule() {
+    var id = draft.ruleId || $('#ruleSubject').value;
+    var perWeek = Math.max(1, Math.min(7, parseInt($('#rulePerWeek').value, 10) || 1));
+    var minutes = Math.max(15, Math.min(300, parseInt($('#ruleMinutes').value, 10) || 90));
+    var r = state.rules.find(function (x) { return x.id === id; });
+    if (r) { r.perWeek = perWeek; r.minutes = minutes; r.active = true; }
+    else { state.rules.push({ id: id, perWeek: perWeek, minutes: minutes, active: true }); }
+    closeModal(); render();
+    toast('已將「' + SUBJECTS[id].name + '」設為每週 ' + perWeek + ' 次、每次 ' + minutes + ' 分鐘。');
+  }
+
+  function openClassModal(id, day, slot) {
+    var c = id ? state.classes.find(function (x) { return x.id === id; }) : null;
+    draft = {
+      classId: id || null,
+      day: c ? c.day : (day != null ? day : 0),
+      start: c ? c.start : (slot || SLOTS[0]),
+      end: c ? c.end : addMin(slot || SLOTS[0], 110),
+      name: c ? c.name : '',
+      room: c ? c.room : ''
+    };
+    openModal(tplClass());
+  }
+  function tplClass() {
+    var isEdit = !!draft.classId;
+    return '<div class="modal-head"><h2 class="modal-title">' + (isEdit ? '編輯課程' : '新增課程') + '</h2>' +
+      '<p class="meta">固定課程時段不可安排讀書。</p></div>' +
+      '<div class="modal-body">' +
+        '<div class="field"><label for="cName">課程名稱</label>' +
+          '<input id="cName" class="input" value="' + esc(draft.name) + '" placeholder="例如：資料結構"></div>' +
+        '<div class="grid-2 spaced"><div class="field"><label for="cDay">星期</label><select id="cDay" class="input">' +
+          WEEK.slice(0, 5).map(function (w, i) { return '<option value="' + i + '"' + (draft.day === i ? ' selected' : '') + '>' + w + '</option>'; }).join('') + '</select></div>' +
+          '<div class="field"><label for="cRoom">地點</label><input id="cRoom" class="input" value="' + esc(draft.room) + '" placeholder="例如：工學院 204"></div></div>' +
+        '<div class="grid-2 spaced"><div class="field"><label for="cStart">開始時間</label><select id="cStart" class="input">' +
+          TIME_OPTS.map(function (s) { return '<option' + (draft.start === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></div>' +
+          '<div class="field"><label for="cEnd">結束時間</label><select id="cEnd" class="input">' +
+          TIME_OPTS.map(function (s) { return '<option' + (draft.end === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></div></div>' +
+      '</div>' +
+      '<div class="modal-actions">' + (isEdit ? '<button class="btn btn-ghost" data-action="class-delete">刪除課程</button>' : '') +
+        '<button class="btn btn-secondary" data-action="modal-close" style="margin-left:auto;">取消</button>' +
+        '<button class="btn btn-primary" data-action="class-save" style="margin-left:0;">儲存課程</button></div>';
+  }
+  function saveClass() {
+    var isEdit = !!draft.classId;
+    var name = $('#cName').value.trim();
+    if (!name) { toast('請輸入課程名稱。'); return; }
+    var data = {
+      name: name, day: +$('#cDay').value, start: $('#cStart').value, end: $('#cEnd').value, room: $('#cRoom').value.trim()
+    };
+    if (isEdit) { var c = state.classes.find(function (x) { return x.id === draft.classId; }); Object.assign(c, data); }
+    else { data.id = 'c' + Date.now(); state.classes.push(data); }
+    closeModal(); render();
+    toast(isEdit ? '已更新課程。' : '已新增課程。');
+  }
+  function deleteClass() {
+    var id = draft.classId;
+    state.classes = state.classes.filter(function (c) { return c.id !== id; });
+    closeModal(); render(); toast('已刪除課程。');
+  }
+
+  /* ── journal actions ──────────────────────────────────────── */
+  function toggleMic() {
+    if (state.recording) {
+      clearInterval(state.recTimer); state.recTimer = null; state.recording = false;
+      var extra = state.journalDraft.done ? '\n' : '';
+      state.journalDraft.done += extra + MOCK_SPEECH;
+      render(); toast('已停止錄音，帶入示範語音文字。');
+    } else {
+      state.recording = true; state.recSec = 0;
+      state.recTimer = setInterval(function () {
+        state.recSec++;
+        var p = $('#recPill');
+        if (p) p.innerHTML = '<span class="rec-dot"></span>正在錄音 ' + mmss();
+      }, 1000);
+      render();
+    }
+  }
+  function saveJournal() {
+    var d = state.journalDraft;
+    if (!d.done.trim() && !d.problem.trim() && !d.plan.trim()) { toast('請先輸入今天的學習紀錄。'); return; }
+    state.entries.unshift({ date: '9月18日（週五）', done: d.done.trim(), problem: d.problem.trim(), plan: d.plan.trim() });
+    state.journalDraft = { done: '', problem: '', plan: '' };
+    render(); toast('已儲存今日紀錄。');
+  }
+
+  /* ── events ───────────────────────────────────────────────── */
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-action]'); if (!el) return;
+    var a = el.dataset.action;
+    if (a === 'nav') { state.view = el.dataset.view; render(); return; }
+    if (a === 'toggle-task') { var t = getTask(el.dataset.id); t.status = t.status === 'done' ? 'pending' : 'done'; render(); return; }
+    if (a === 'reschedule') { openRescheduleModal(el.dataset.id); return; }
+    if (a === 'adjust') { openAdjustModal(el.dataset.id); return; }
+    if (a === 'end-day') { state.view = 'journal'; state.focusJournal = true; render(); return; }
+    if (a === 'resched-day') { draft.day = +el.dataset.day; renderReschedExtra(); return; }
+    if (a === 'resched-slot') { draft.slot = el.dataset.slot; renderReschedExtra(); return; }
+    if (a === 'resched-confirm') { applyReschedule(); return; }
+    if (a === 'adjust-day') { draft.day = +el.dataset.day; openModal(tplAdjust()); return; }
+    if (a === 'adjust-slot') { draft.slot = el.dataset.slot; openModal(tplAdjust()); return; }
+    if (a === 'adjust-confirm') { applyAdjust(); return; }
+    if (a === 'rule-add') { openRuleModal(null); return; }
+    if (a === 'rule-edit') { openRuleModal(el.dataset.id); return; }
+    if (a === 'rule-toggle') {
+      var r = state.rules.find(function (x) { return x.id === el.dataset.id; });
+      r.active = !r.active; render(); toast('已' + (r.active ? '啟用' : '停用') + '「' + SUBJECTS[r.id].name + '」固定規則。'); return;
+    }
+    if (a === 'rule-save') { saveRule(); return; }
+    if (a === 'class-add') { openClassModal(null, el.dataset.day != null ? +el.dataset.day : 0, el.dataset.slot); return; }
+    if (a === 'class-edit') { openClassModal(el.dataset.id); return; }
+    if (a === 'class-save') { saveClass(); return; }
+    if (a === 'class-delete') { deleteClass(); return; }
+    if (a === 'import-timetable') { toast('匯入課表為 Prototype 示意，尚未實際解析檔案。'); return; }
+    if (a === 'journal-mic') { toggleMic(); return; }
+    if (a === 'journal-save') { saveJournal(); return; }
+    if (a === 'modal-close') { closeModal(); return; }
+  });
+
+  document.addEventListener('change', function (e) {
+    var input = e.target.closest('input[type=radio]');
+    if (!input) return;
+    var group = input.closest('.choice-group');
+    if (group) $$('.choice', group).forEach(function (l) { l.classList.toggle('is-selected', l.contains(input)); });
+    if (input.name === 'method' && draft) { draft.method = input.value; renderReschedExtra(); }
+    if (input.name === 'reason' && draft) { draft.reason = input.value; }
+  });
+
+  document.addEventListener('input', function (e) {
+    if (e.target.id === 'jDone') state.journalDraft.done = e.target.value;
+    if (e.target.id === 'jProblem') state.journalDraft.problem = e.target.value;
+    if (e.target.id === 'jPlan') state.journalDraft.plan = e.target.value;
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('#modalRoot').hidden) closeModal();
+  });
+
+  if (['today', 'week', 'rules', 'timetable', 'journal'].indexOf(state.view) < 0) state.view = 'today';
+  render();
+})();
+</script>
+</body>
+</html>
