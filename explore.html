@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>職涯探索 · 學習生涯工作台</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .stack > .card, .grid-2 > .card, .grid-3 > .card{ margin-top: 0; }
+  .have-chip{ display: inline-flex; padding: 3px 9px; border-radius: 999px; background: var(--ok-soft); color: color-mix(in oklch, var(--ok) 62%, var(--fg)); font-size: 12px; }
+  .gap-chip{ display: inline-flex; padding: 3px 9px; border-radius: 999px; border: 1px dashed color-mix(in oklch, var(--warn) 48%, var(--border)); color: color-mix(in oklch, var(--warn) 76%, var(--fg)); font-size: 12px; }
+  .build-chip{ display: inline-flex; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-size: 12px; }
+  .path-list{ margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .path-list li{ font-size: 13px; line-height: 1.55; color: color-mix(in oklch, var(--fg) 80%, var(--muted)); }
+  @media (max-width: 920px){ .grid-2{ grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-page="explore">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="appbar" id="appbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<div class="toast-root" id="toastRoot"></div>
+<div id="modalRoot"></div>
+<div id="voiceRoot"></div>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var db = OD.db;
+  var ICO = {
+    book: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5z"/><path d="M4 5.5v14"/></svg>',
+    spark: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.7 9l5.3 1.7-5.3 1.7L12 18l-1.7-5.6L5 10.7 10.3 9z"/><path d="M19 4.5v2M18 5.5h2"/></svg>'
+  };
+
+  function skillsBuilding(id) {
+    var out = [];
+    db.goals.filter(function (g) { return g.career === id; }).forEach(function (g) {
+      (g.skills || []).forEach(function (s) { if (out.indexOf(s) < 0) out.push(s); });
+    });
+    return out;
+  }
+  function resCount(d) { var n = 0; Object.keys(d.resources).forEach(function (k) { n += d.resources[k].length; }); return n; }
+
+  OD.appbar({
+    title: '職涯探索',
+    sub: db.careerDirections.length + ' 個可能探索方向 · 依學習歷程與能力輪廓整理'
+  });
+
+  function render() {
+    OD.$('#content').innerHTML =
+      '<div style="margin-bottom:16px">' + OD.flowStrip('explore') + '</div>' +
+      '<div class="avoid-note" style="margin-bottom:16px">' + ICO.spark + '以下是依你目前的修課、成果與能力證據整理的初步分析，用來幫助你認識可能的方向與能力缺口。</div>' +
+      directionsSection();
+  }
+
+  /* ── 職涯方向探索 ───────────────────────────────────────── */
+  function directionsSection() {
+    var cards = db.careerDirections.map(function (d) {
+      var have = (d.have || []).map(function (x) { return '<span class="have-chip">' + OD.esc(x) + '</span>'; }).join('');
+      var gap = (d.gap || []).map(function (x) { return '<span class="gap-chip">' + OD.esc(x) + '</span>'; }).join('');
+      var kw = (d.kw || []).map(function (x) { return '<span class="pill pill-muted">' + OD.esc(x) + '</span>'; }).join('');
+      var grad = (d.grad || []).map(function (x) { return '<span class="pill">' + OD.esc(x) + '</span>'; }).join('');
+      var path = (d.path || []).map(function (x) { return '<li>' + OD.esc(x) + '</li>'; }).join('');
+      var building = skillsBuilding(d.id);
+      var buildingHtml = building.length
+        ? '<div style="margin:16px 0 0"><div class="section-title">你目前正在補足的能力</div>' +
+          '<div class="chip-set">' + building.map(function (x) { return '<span class="build-chip">' + OD.esc(x) + '</span>'; }).join('') + '</div></div>'
+        : '';
+      return '<article class="card" style="margin-top:0" data-od-id="dir-' + d.id + '">' +
+        '<div class="row-between" style="align-items:flex-start">' +
+          '<div><div class="card-title">' + OD.esc(d.name) + '</div><div class="card-sub">' + OD.esc(d.en) + '</div></div>' +
+          '<span class="pill">能力重疊 ' + d.overlap + '%</span></div>' +
+        '<div class="bar" style="margin-top:12px"><i style="width:' + d.overlap + '%"></i></div>' +
+        (d.reason ? '<p style="margin:14px 0 0;font-size:13.5px;line-height:1.62;color:color-mix(in oklch, var(--fg) 80%, var(--muted))">' + OD.esc(d.reason) + '</p>' : '') +
+        (have ? '<div style="margin:14px 0 0"><div class="section-title">具有能力重疊</div><div class="chip-set">' + have + '</div></div>' : '') +
+        (gap ? '<div style="margin:14px 0 0"><div class="section-title">能力缺口</div><div class="chip-set">' + gap + '</div></div>' : '') +
+        (path ? '<div style="margin:16px 0 0"><div class="section-title">建議學習路徑</div><ol class="path-list">' + path + '</ol></div>' : '') +
+        ((grad || kw) ? '<div style="margin:16px 0 0"><div class="section-title">相關研究所 · 關鍵字</div><div class="chip-set">' + grad + kw + '</div></div>' : '') +
+        (d.suggest ? '<div class="avoid-note" style="margin-top:14px">' + ICO.spark + OD.esc(d.suggest) + '</div>' : '') +
+        buildingHtml +
+        '<div class="row-between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">' +
+          '<span class="meta">對應 ' + resCount(d) + ' 項學習資源</span>' +
+          '<a class="btn btn-sm btn-secondary" href="resources.html?dir=' + d.id + '">' + ICO.book + '查看學習資源</a>' +
+        '</div></article>';
+    }).join('');
+    var head = '<div class="card-head" style="margin-bottom:14px"><div>' +
+      '<div class="card-title" style="font-size:17px">可能探索的職涯方向</div>' +
+      '<div class="card-sub">依你目前的學習歷程與成果整理的初步分析</div></div>' +
+      '<span class="pill pill-muted">非正式評量結果</span></div>';
+    return '<section class="card" data-od-id="career-directions">' + head +
+      '<div class="grid-2">' + cards + '</div>' +
+      '<div class="meta" style="margin-top:16px">' + OD.esc(db.aiDisclaimer) + '</div></section>';
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>修課與畢業 · 學習生涯工作台</title>
+<link rel="stylesheet" href="assets/theme.css">
+</head>
+<body data-page="courses">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="appbar" id="appbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<div class="toast-root" id="toastRoot"></div>
+<div id="modalRoot"></div>
+<div id="voiceRoot"></div>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var db = OD.db;
+  var ICO = {
+    import: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg>',
+    plus: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    file: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>',
+    check: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9 17.5 20 6.5"/></svg>',
+    download: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg>'
+  };
+  var GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'];
+  var YEARS = [
+    { v: 'all', l: '全部' }, { v: '1', l: '大一' }, { v: '2', l: '大二' },
+    { v: '3', l: '大三' }, { v: '4', l: '大四' }
+  ];
+  var DAYS = [
+    { v: '1', l: '週一' }, { v: '2', l: '週二' }, { v: '3', l: '週三' },
+    { v: '4', l: '週四' }, { v: '5', l: '週五' }
+  ];
+
+  var st = { filter: String(OD.currentYear()), cat: null, imp: { phase: 'drop' }, req: { phase: 'drop' } };
+
+  function catName(id) { var c = db.categories.filter(function (x) { return x.id === id; })[0]; return c ? c.name : id; }
+  function pad(n) { return ('0' + n).slice(-2); }
+  function pct(a, b) { return b ? Math.min(100, Math.round(a / b * 100)) : 0; }
+  function card(title, sub, body, actions) {
+    return '<section class="card" data-od-id="' + OD.slug(title) + '"><div class="card-head"><div><div class="card-title">' + title + '</div>' +
+      (sub ? '<div class="card-sub">' + sub + '</div>' : '') + '</div>' + (actions || '') + '</div>' + body + '</section>';
+  }
+  function kpi(v, k) { return '<div class="kpi-card"><div class="v num">' + v + '</div><div class="k">' + k + '</div></div>'; }
+  function semCredits(sem) { return OD.creditsOf(function (c) { return c.semester === sem; }); }
+  function semGpa(sem) {
+    var pts = 0, cr = 0;
+    db.courses.filter(function (c) { return c.semester === sem; }).forEach(function (c) {
+      var p = OD.gradePoint(c.grade); if (p == null || !c.credits) return; pts += p * c.credits; cr += c.credits;
+    });
+    return cr ? Math.round(pts / cr * 100) / 100 : null;
+  }
+  function visibleCourses() {
+    return db.courses.filter(function (c) {
+      if (st.filter !== 'all' && String(OD.semYear(c.semester)) !== st.filter) return false;
+      if (st.cat && c.category !== st.cat) return false;
+      return true;
+    });
+  }
+  function meetingsOf(cid) {
+    if (!cid) return [];
+    var out = [];
+    Object.keys(db.timetableBySemester || {}).forEach(function (k) {
+      (db.timetableBySemester[k] || []).forEach(function (t) { if (t.courseId === cid) out.push(t); });
+    });
+    (db.timetable || []).forEach(function (t) {
+      if (t.courseId === cid && !out.some(function (o) { return o.id === t.id; })) out.push(t);
+    });
+    return out;
+  }
+  function meetingLabel(t) { return OD.DAY_NAMES[t.day] + ' ' + t.start + '–' + t.end + (t.room ? ' · ' + t.room : ''); }
+
+  OD.appbar({
+    title: '修課與畢業',
+    sub: '畢業門檻 ' + db.graduationRequirements.totalNeed + ' 學分 · 成績單檢核與學分缺口',
+    actions: '<button class="btn btn-secondary" data-action="import">' + ICO.import + '匯入成績單</button>' +
+             '<button class="btn btn-secondary" data-action="req-import">' + ICO.import + '匯入畢業門檻</button>' +
+             '<button class="btn btn-primary" data-action="add-course">' + ICO.plus + '新增修課</button>'
+  });
+
+  function render() { OD.$('#content').innerHTML = '<div class="split">' + leftCol() + rightCol() + '</div>' + records() + kpis(); }
+
+  /* ── KPI ────────────────────────────────────────────────── */
+  function kpis() {
+    var g = OD.graduation();
+    var missing = Math.max(0, g.totalNeed - g.earned);
+    return '<div class="grid-4" style="margin-top:22px">' +
+      kpi(g.earned + ' <small>/ ' + g.totalNeed + '</small>', '已修學分') +
+      kpi(OD.gpa().toFixed(2), '平均等第（GPA 4.3 制）') +
+      kpi(semCredits(db.currentSemester) + ' <small>學分</small>', db.currentSemester + ' 修課學分') +
+      kpi(missing + ' <small>學分</small>', '距離畢業尚缺') + '</div>';
+  }
+
+  /* ── 左：畢業學分檢核 ───────────────────────────────────── */
+  function leftCol() {
+    var g = OD.graduation();
+    var rows = g.categories.map(function (c) {
+      var active = st.cat === c.id;
+      return '<button class="degree-row" data-action="cat-filter" data-id="' + c.id + '" style="width:100%;background:none;border:0;padding:9px 0;text-align:left;border-radius:8px' + (active ? ';outline:1px solid var(--accent)' : '') + '">' +
+        '<span class="mini' + (active ? '' : '') + '">' + OD.esc(c.name) + '</span>' +
+        '<span><span class="mini-bar"><span class="bar' + (c.missing ? ' warn' : ' ok') + '"><i style="width:' + pct(c.earned, c.need) + '%"></i></span>' +
+          '<span class="n num">' + c.earned + ' / ' + c.need + '</span></span></span>' +
+        '<span style="text-align:right">' + (c.missing ? '<span class="pill pill-warn">缺 ' + c.missing + '</span>' : '<span class="pill pill-ok">達標</span>') + '</span>' +
+      '</button>';
+    }).join('');
+    var head = '<div class="card-head"><div><div class="card-title">畢業學分檢核</div>' +
+      '<div class="card-sub">依課程類別統計，點選可篩選下方修課紀錄</div></div>' +
+      (g.imported ? '<span class="pill pill-ok">已匯入 ' + OD.esc(g.fileName || '成績單') + '</span>' : '<span class="pill pill-muted">未匯入成績單</span>') + '</div>';
+    var overall = '<div class="row-between" style="margin:4px 0 14px"><span class="big-num" style="font-size:40px">' + g.earned +
+      '<span style="font-size:15px"> / ' + g.totalNeed + ' 學分</span></span>' +
+      '<span class="meta">' + pct(g.earned, g.totalNeed) + '% 完成</span></div>' +
+      '<div class="bar bar-lg" style="margin-bottom:16px"><i style="width:' + pct(g.earned, g.totalNeed) + '%"></i></div>';
+    return '<section class="card" data-od-id="graduation-check">' + head + overall + rows +
+      (st.cat || st.filter !== 'all'
+        ? '<div style="margin-top:12px"><button class="btn btn-sm btn-ghost" data-action="clear-filter">清除篩選條件</button></div>'
+        : '') + '</section>';
+  }
+
+  /* ── 右：學期概況 ───────────────────────────────────────── */
+  function rightCol() {
+    var mini = db.semesterOrder.slice().reverse().map(function (sem) {
+      var cr = semCredits(sem); if (!cr) return '';
+      var gp = semGpa(sem);
+      return '<div style="margin-bottom:11px"><div class="row-between" style="margin-bottom:5px">' +
+        '<span class="mini">' + sem + (sem === db.currentSemester ? '（本學期）' : '') + '</span>' +
+        '<span class="meta">' + cr + ' 學分' + (gp != null ? ' · GPA ' + gp.toFixed(2) : '') + '</span></div>' +
+        '<div class="bar' + (sem === db.currentSemester ? ' ok' : '') + '"><i style="width:' + pct(cr, 24) + '%"></i></div></div>';
+    }).join('');
+    var semCard = card('各學期修課', '依學分數與平均等第', mini || '<div class="empty">尚無紀錄</div>');
+
+    return '<div class="stack">' + semCard + '</div>';
+  }
+
+  /* ── 修課紀錄 ───────────────────────────────────────────── */
+  function records() {
+    var list = visibleCourses();
+    var groups = db.semesterOrder.slice().reverse().filter(function (sem) { return list.some(function (c) { return c.semester === sem; }); });
+    var body = groups.map(function (sem) {
+      var items = list.filter(function (c) { return c.semester === sem; });
+      var cr = items.reduce(function (s, c) { return s + (c.credits || 0); }, 0);
+      var gp = semGpa(sem);
+      return '<div style="margin-top:18px"><div class="row-between" style="margin-bottom:4px">' +
+        '<span class="section-title" style="margin:0">' + sem + (sem === db.currentSemester ? ' · 本學期' : '') + '</span>' +
+        '<span class="meta">' + items.length + ' 門 · ' + cr + ' 學分' + (gp != null ? ' · GPA ' + gp.toFixed(2) : '') + '</span></div>' +
+        (st.filter === 'all' ? '' : semTimetable(sem)) +
+        '<div class="stack-sm">' + items.map(courseRow).join('') + '</div></div>';
+    }).join('');
+    if (!groups.length) body = '<div class="empty">此條件下沒有修課紀錄。</div>';
+
+    var tabs = '<div class="seg">' + YEARS.map(function (y) {
+      return '<button data-action="year-filter" data-v="' + y.v + '"' + (st.filter === y.v ? ' class="is-active"' : '') + '>' + y.l + '</button>';
+    }).join('') + '</div>';
+    return '<section class="card" data-od-id="course-records" style="margin-top:16px"><div class="card-head"><div>' +
+      '<div class="card-title">修課紀錄</div><div class="card-sub">共 ' + db.courses.length + ' 門課程（含修課中）</div></div>' + tabs + '</div>' + body + '</section>';
+  }
+  function courseRow(c) {
+    var gp = OD.gradePoint(c.grade);
+    var mt = meetingsOf(c.id);
+    var right = c.grade
+      ? '<span class="grade">' + OD.esc(c.grade) + '</span>'
+      : '<span class="tag tag-ok">修課中</span>';
+    return '<button class="lrow" data-action="course-detail" data-id="' + c.id + '" style="width:100%;background:none;border:0;border-bottom:1px solid var(--border);text-align:left;padding:11px 2px">' +
+      '<span class="grow"><b style="font-size:14px">' + OD.esc(c.name) + '</b>' +
+        '<div class="meta" style="margin-top:3px">' + OD.esc(catName(c.category)) + ' · ' + c.credits + ' 學分' +
+        (c.teacher && c.teacher !== '—' ? ' · ' + OD.esc(c.teacher) : '') + '</div>' +
+        (mt.length ? '<div class="meta" style="margin-top:3px">' + OD.esc(mt.map(meetingLabel).join('、')) + '</div>' : '') + '</span>' +
+      '<span class="row" style="gap:9px">' + right + '</span></button>';
+  }
+
+  /* ── 每學期課表（嵌入修課紀錄，置於紀錄上方） ───────────── */
+  function semTimetable(sem) {
+    var list = OD.timetableFor(sem);
+    if (!list.length) return '';
+    var days = [1, 2, 3, 4, 5], names = ['週一', '週二', '週三', '週四', '週五'];
+    var hs = list.map(function (t) { return Math.floor(OD.toMin(t.start) / 60); });
+    var he = list.map(function (t) { return Math.ceil(OD.toMin(t.end) / 60); });
+    var startH = Math.max(0, Math.min.apply(null, hs));
+    var endH = Math.min(24, Math.max.apply(null, he));
+    var head = '<div class="tt-head"></div>' + names.map(function (n) { return '<div class="tt-head">' + n + '</div>'; }).join('');
+    var rows = '';
+    for (var h = startH; h < endH; h++) {
+      rows += '<div class="tt-slot">' + pad(h) + ':00</div>';
+      days.forEach(function (d) {
+        var cls = list.filter(function (t) { return t.day === d && Math.floor(OD.toMin(t.start) / 60) === h; })[0];
+        var covered = list.filter(function (t) { return t.day === d && OD.toMin(t.start) <= h * 60 && h * 60 < OD.toMin(t.end); })[0];
+        if (cls) {
+          rows += '<div class="tt-cell"><button class="tt-class" data-action="tt-class" data-id="' + cls.id + '" data-sem="' + OD.esc(sem) + '">' +
+            '<b>' + OD.esc(cls.name) + '</b><span>' + cls.start + '–' + cls.end + '</span></button></div>';
+        } else if (covered) {
+          rows += '<div class="tt-cell" aria-hidden="true"></div>';
+        } else {
+          rows += '<div class="tt-cell is-free"></div>';
+        }
+      });
+    }
+    var cap = sem === db.currentSemester
+      ? '課表 · ' + list.length + ' 個時段（安排學習任務時會自動避開）'
+      : '課表 · ' + list.length + ' 個時段';
+    return '<div class="tt-embed"><div class="tt-embed-cap">' + cap + '</div>' +
+      '<div class="tt is-compact">' + head + rows + '</div></div>';
+  }
+
+  /* ── 互動：篩選 ─────────────────────────────────────────── */
+  OD.on('year-filter', function (el) { st.filter = el.getAttribute('data-v'); render(); });
+  OD.on('cat-filter', function (el) { var id = el.getAttribute('data-id'); st.cat = st.cat === id ? null : id; render(); });
+  OD.on('clear-filter', function () { st.filter = 'all'; st.cat = null; render(); });
+
+  function findTt(id) {
+    var all = [];
+    Object.keys(db.timetableBySemester || {}).forEach(function (k) { all = all.concat(db.timetableBySemester[k]); });
+    if (db.timetable) all = all.concat(db.timetable);
+    return all.filter(function (t) { return t.id === id; })[0] || null;
+  }
+
+  /* ── 互動：課程 / 課表細節 ──────────────────────────────── */
+  OD.on('course-detail', function (el) {
+    var c = OD.course(el.getAttribute('data-id')); if (!c) return;
+    var ev = db.skillEvidence.filter(function (e) { return e.sourceId === c.id; });
+    var tts = meetingsOf(c.id);
+    var body = '<div class="grid-2">' +
+        '<div class="kpi"><span class="k">學分</span><span class="v">' + c.credits + '</span></div>' +
+        '<div class="kpi"><span class="k">類別</span><span class="v" style="font-size:16px">' + OD.esc(catName(c.category)) + '</span></div>' +
+        '<div class="kpi"><span class="k">學期</span><span class="v" style="font-size:16px">' + OD.esc(c.semester) + '</span></div>' +
+        '<div class="kpi"><span class="k">等第</span><span class="v">' + (c.grade || '修課中') + '</span></div>' +
+      '</div>' +
+      (c.teacher && c.teacher !== '—' ? '<div class="row-between"><span class="mini">授課教師</span><b>' + OD.esc(c.teacher) + '</b></div>' : '') +
+      (tts.length ? '<div><div class="section-title">課表時段</div><div class="stack-sm">' + tts.map(function (t) {
+        return '<div class="lrow"><span class="mini">' + OD.DAY_NAMES[t.day] + '</span><span class="num">' + t.start + '–' + t.end + ' · ' + OD.esc(t.room) + '</span></div>';
+      }).join('') + '</div></div>' : '') +
+      '<div><div class="section-title">對應能力證據</div>' +
+        (ev.length ? '<div class="stack-sm">' + ev.map(function (e) {
+          var s = db.skills.filter(function (x) { return x.id === e.skillId; })[0];
+          return '<div class="lrow"><span class="mini">' + OD.esc(s ? s.name : '') + '</span><span class="meta">' + OD.esc(e.detail) + '</span></div>';
+        }).join('') + '</div>' : '<div class="meta">此課程尚未連結能力證據。</div>') + '</div>';
+    OD.modal({
+      title: OD.esc(c.name), sub: OD.esc(c.semester) + ' · ' + c.credits + ' 學分', body: body,
+      foot: '<button class="btn btn-secondary" data-action="modal-close">關閉</button>' +
+            '<button class="btn btn-primary" data-action="course-to-achievement" data-id="' + c.id + '">建立課程成果</button>'
+    });
+  });
+  OD.on('course-to-achievement', function (el) {
+    try { localStorage.setItem('shiji:prefillCourse', el.getAttribute('data-id')); } catch (e) {}
+    location.href = 'achievements.html?fromCourse=1';
+  });
+  OD.on('tt-class', function (el) {
+    var t = findTt(el.getAttribute('data-id')); if (!t) return;
+    var isCurrent = (el.getAttribute('data-sem') || db.currentSemester) === db.currentSemester;
+    OD.modal({
+      title: OD.esc(t.name), sub: OD.DAY_NAMES[t.day] + ' ' + t.start + '–' + t.end,
+      body: '<div class="row-between"><span class="mini">教室</span><b>' + OD.esc(t.room) + '</b></div>' +
+            (isCurrent ? '<div class="avoid-note">此為本學期課表時段，安排學習任務時會自動避開。</div>'
+                       : '<div class="meta">此為歷史學期課表時段。</div>'),
+      foot: '<button class="btn btn-secondary" data-action="modal-close">關閉</button>'
+    });
+  });
+
+  /* ── 匯入成績單（模擬） ─────────────────────────────────── */
+  OD.on('import', function () { st.imp.phase = 'drop'; openImport(); });
+  function openImport() {
+    OD.modal({
+      title: '匯入成績單', sub: '模擬匯入流程，不會實際上傳或解析檔案', wide: true,
+      body: impBody(), foot: impFoot()
+    });
+  }
+  function refreshImp() {
+    var m = OD.$('.modal'); if (!m) return;
+    OD.$('.modal-body', m).innerHTML = impBody();
+    OD.$('.modal-foot', m).innerHTML = impFoot();
+  }
+  function impBody() {
+    if (st.imp.phase === 'drop') {
+      return '<div class="drop">' + ICO.file +
+        '<b>將成績單拖曳到此處</b>' +
+        '<div class="meta">支援 PDF、JPG、PNG（Prototype 僅模擬解析結果）</div></div>' +
+        '<div class="meta">系統會辨識課程名稱、學分數與等第，並比對畢業門檻。</div>';
+    }
+    if (st.imp.phase === 'parsing') {
+      return '<div class="row" style="gap:11px"><span class="spinner"></span><b>正在解析成績單…</b></div>' +
+        '<div class="meta">辨識課程名稱、學分數與等第</div>';
+    }
+    var p = db.graduationRequirements.parseResult;
+    return '<div class="avoid-note">' + ICO.check + '解析完成，已比對 ' + db.courses.length + ' 門課程。</div>' +
+      '<div class="grid-2">' +
+        stat('畢業總學分', p.minCredits) + stat('系必修', p.required) +
+        stat('系選修', p.elective) + stat('通識', p.ge) + stat('自由選修', p.free) +
+        stat('偵測到課程', db.courses.length) +
+      '</div>' +
+      '<div class="meta">此為 Prototype 的模擬結果，未串接任何檔案解析服務。</div>';
+  }
+  function stat(k, v) {
+    return '<div class="kpi-card" style="padding:12px 14px"><div class="v num" style="font-size:20px">' + v + ' <small>學分</small></div><div class="k">' + k + '</div></div>';
+  }
+  function impFoot() {
+    if (st.imp.phase === 'parsing') return '';
+    if (st.imp.phase === 'done') {
+      return '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+             '<button class="btn btn-primary" data-action="import-confirm">確認匯入</button>';
+    }
+    return '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+           '<button class="btn btn-primary" data-action="import-parse">' + ICO.import + '選擇檔案並解析</button>';
+  }
+  OD.on('import-parse', function () {
+    st.imp.phase = 'parsing'; refreshImp();
+    setTimeout(function () { if (st.imp.phase === 'parsing') { st.imp.phase = 'done'; refreshImp(); } }, 900);
+  });
+  OD.on('import-confirm', function () {
+    db.graduationRequirements.imported = true;
+    db.graduationRequirements.fileName = '成績單_1132.pdf';
+    OD.save(); OD.closeModal(); render(); OD.toast('已匯入成績單，畢業檢核已更新');
+  });
+
+  /* ── 匯入畢業門檻檔案（模擬） ───────────────────────────── */
+  OD.on('req-import', function () { st.req.phase = 'drop'; openReq(); });
+  function openReq() {
+    OD.modal({
+      title: '匯入畢業門檻檔案', sub: '模擬匯入流程，不會實際上傳或解析檔案', wide: true,
+      body: reqBody(), foot: reqFoot()
+    });
+  }
+  function refreshReq() {
+    var m = OD.$('.modal'); if (!m) return;
+    OD.$('.modal-body', m).innerHTML = reqBody();
+    OD.$('.modal-foot', m).innerHTML = reqFoot();
+  }
+  function reqBody() {
+    if (st.req.phase === 'drop') {
+      return '<div class="drop">' + ICO.file +
+        '<b>將畢業門檻檔案拖曳到此處</b>' +
+        '<div class="meta">支援 PDF、DOCX（Prototype 僅模擬解析結果）</div></div>' +
+        '<div class="meta">系統會辨識畢業總學分與各類別門檻，並套用到學分檢核。</div>';
+    }
+    if (st.req.phase === 'parsing') {
+      return '<div class="row" style="gap:11px"><span class="spinner"></span><b>正在解析畢業門檻…</b></div>' +
+        '<div class="meta">辨識畢業總學分與課程類別門檻</div>';
+    }
+    var p = db.graduationRequirements.parseResult;
+    return '<div class="avoid-note">' + ICO.check + '解析完成，畢業門檻條件如下。</div>' +
+      '<div class="grid-2">' +
+        stat('畢業總學分', p.minCredits) + stat('系必修', p.required) +
+        stat('系選修', p.elective) + stat('通識', p.ge) + stat('自由選修', p.free) +
+      '</div>' +
+      '<div class="meta">此為 Prototype 的模擬結果，未串接任何檔案解析服務。</div>';
+  }
+  function reqFoot() {
+    if (st.req.phase === 'parsing') return '';
+    if (st.req.phase === 'done') {
+      return '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+             '<button class="btn btn-primary" data-action="req-confirm">確認匯入</button>';
+    }
+    return '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+           '<button class="btn btn-primary" data-action="req-parse">' + ICO.import + '選擇檔案並解析</button>';
+  }
+  OD.on('req-parse', function () {
+    st.req.phase = 'parsing'; refreshReq();
+    setTimeout(function () { if (st.req.phase === 'parsing') { st.req.phase = 'done'; refreshReq(); } }, 900);
+  });
+  OD.on('req-confirm', function () {
+    db.graduationRequirements.requirementsImported = true;
+    db.graduationRequirements.requirementsFileName = '畢業門檻_資工系.pdf';
+    OD.save(); OD.closeModal(); render(); OD.toast('已匯入畢業門檻檔案，檢核條件已更新');
+  });
+
+  /* ── 新增修課紀錄 ───────────────────────────────────────── */
+  OD.on('add-course', function () {
+    OD.modal({
+      title: '新增修課紀錄', sub: '手動新增一門課程', wide: true,
+      body: '<div class="form-grid">' +
+        '<div class="field span-2"><label>課程名稱</label><input class="input" id="ncName" placeholder="例如：編譯器設計"></div>' +
+        '<div class="field"><label>學分數</label><input class="input" type="number" min="0" max="6" id="ncCredits" value="3"></div>' +
+        '<div class="field"><label>類別</label><select class="select" id="ncCat">' +
+          db.categories.map(function (c) { return '<option value="' + c.id + '">' + OD.esc(c.name) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label>學期</label><select class="select" id="ncSem">' +
+          db.semesterOrder.map(function (s) { return '<option' + (s === db.currentSemester ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label>等第</label><select class="select" id="ncGrade"><option value="">修課中</option>' +
+          GRADES.map(function (g) { return '<option>' + g + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field span-2"><label>授課教師（選填）</label><input class="input" id="ncTeacher" placeholder="例如：黃俊傑"></div>' +
+        '<div class="field span-2"><label>修課時間（選填）</label>' +
+          '<div class="row" style="gap:9px;flex-wrap:wrap">' +
+            '<select class="select" id="ncDay" style="flex:1 1 96px">' +
+              '<option value="">不指定</option>' +
+              DAYS.map(function (d) { return '<option value="' + d.v + '">' + d.l + '</option>'; }).join('') + '</select>' +
+            '<input type="time" class="input" id="ncStart" value="10:00" style="flex:1 1 110px" aria-label="開始時間">' +
+            '<input type="time" class="input" id="ncEnd" value="12:00" style="flex:1 1 110px" aria-label="結束時間">' +
+            '<input class="input" id="ncRoom" placeholder="教室（選填）" style="flex:2 1 140px">' +
+          '</div></div>' +
+      '</div>',
+      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+            '<button class="btn btn-primary" data-action="save-course">新增課程</button>'
+    });
+  });
+  OD.on('save-course', function () {
+    var name = (OD.$('#ncName') || {}).value || '';
+    if (!name.trim()) { OD.toast('請輸入課程名稱'); return; }
+    var grade = OD.$('#ncGrade').value;
+    var sem = OD.$('#ncSem').value;
+    var id = OD.uid('c');
+    db.courses.push({
+      id: id, name: name.trim(), credits: Math.max(0, +OD.$('#ncCredits').value || 0),
+      category: OD.$('#ncCat').value, semester: sem, grade: grade,
+      teacher: (OD.$('#ncTeacher').value || '').trim() || '—', inProgress: !grade
+    });
+    var day = +((OD.$('#ncDay') || {}).value || 0);
+    var start = (OD.$('#ncStart') || {}).value || '';
+    var end = (OD.$('#ncEnd') || {}).value || '';
+    var room = ((OD.$('#ncRoom') || {}).value || '').trim();
+    var msg = '已新增課程：' + name.trim();
+    if (day && start && end && OD.toMin(end) > OD.toMin(start)) {
+      db.timetableBySemester = db.timetableBySemester || {};
+      if (!db.timetableBySemester[sem]) db.timetableBySemester[sem] = [];
+      db.timetableBySemester[sem].push({
+        id: OD.uid('tt'), day: day, start: start, end: end,
+        name: name.trim(), room: room || '未指定', courseId: id
+      });
+      msg = '已新增課程與課表時段';
+    }
+    OD.save(); OD.closeModal(); render(); OD.toast(msg);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

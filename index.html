@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>首頁 · 學習生涯工作台</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .ai-prompt{ border: 1px solid color-mix(in oklch, var(--accent) 32%, var(--border)); background: color-mix(in oklch, var(--accent-soft) 42%, var(--surface)); border-radius: var(--radius); padding: 12px 13px; }
+  .ai-step{ display: flex; gap: 11px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .ai-step:first-child{ padding-top: 2px; }
+  .ai-step:last-child{ border-bottom: 0; padding-bottom: 0; }
+  .ai-step-n{ flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); border: 1px solid color-mix(in oklch, var(--accent) 32%, var(--border)); }
+  .ai-step-body{ flex: 1 1 auto; min-width: 0; }
+  .ai-step-title{ font-size: 13px; font-weight: 650; margin-bottom: 7px; }
+  .ai-prompt-wrap{ position: relative; }
+  .ai-prompt-text{ margin: 0; font-size: 12.5px; line-height: 1.62; white-space: pre-wrap; color: color-mix(in oklch, var(--fg) 86%, var(--muted)); max-height: 3.3em; overflow: hidden; transition: max-height .32s ease; }
+  .ai-prompt[data-expanded="true"] .ai-prompt-text{ max-height: 640px; }
+  .ai-prompt-wrap::after{ content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28px; pointer-events: none; opacity: 1; transition: opacity .32s ease; background: linear-gradient(to bottom, transparent, color-mix(in oklch, var(--accent-soft) 42%, var(--surface))); }
+  .ai-prompt[data-expanded="true"] .ai-prompt-wrap::after{ opacity: 0; }
+  .ai-prompt-actions{ display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }
+  .ai-prompt-more{ display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .ai-prompt[data-expanded="true"] .ai-prompt-more{ display: none; }
+  .ai-prompt-more .chev{ display: inline-flex; transition: transform .32s ease; }
+  .ai-prompt-collapse{ display: none; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .ai-prompt[data-expanded="true"] .ai-prompt-collapse{ display: inline-flex; }
+  .ai-prompt-collapse:hover{ color: var(--fg); }
+  .btn.is-copied{ background: var(--ok); border-color: var(--ok); color: oklch(100% 0 0); }
+</style>
+</head>
+<body data-page="home">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="appbar" id="appbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<div class="toast-root" id="toastRoot"></div>
+<div id="modalRoot"></div>
+<div id="voiceRoot"></div>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var db = OD.db;
+  var ICO = {
+    check: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9 17.5 20 6.5"/></svg>',
+    plus: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    mic: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>',
+    cal: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+    shield: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 19 6v6c0 4.2-3 7.4-7 8.5-4-1.1-7-4.3-7-8.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/></svg>',
+    chev: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    doc: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
+  };
+  var KINDS = ['理解', '練習', '複習', '回想', '測驗'];
+  var AI_PROMPT = [
+    '請整理以下對話中與我的學習相關資訊，並以適合放入學習歷程的方式整理。',
+    '',
+    '請包含：',
+    '・本次學習內容',
+    '・已完成的事項',
+    '・遇到的問題或困難',
+    '・尚未完成／需要後續處理的事項',
+    '・可以形成的學習成果',
+    '',
+    '請只整理對話中實際提到的資訊，不要自行推測。',
+    '',
+    '【對話內容】',
+    '（在這裡貼上你的對話內容）'
+  ].join('\n');
+
+  var d0 = OD.parseISO(OD.today);
+  var st = {
+    view: 'journal', selected: OD.today, calY: d0.getFullYear(), calM: d0.getMonth(),
+    nt: { mode: 'time', timeMode: 'slot', slot: null, title: '', date: null, sidName: '', start: '19:00', end: '20:30' },
+    sch: { id: null, date: null, slot: null }
+  };
+
+  function dot(h) { return 'oklch(62% 0.13 ' + h + ')'; }
+  function card(title, sub, body, actions) {
+    return '<section class="card" data-od-id="' + OD.slug(title) + '"><div class="card-head"><div><div class="card-title">' + title + '</div>' +
+      (sub ? '<div class="card-sub">' + sub + '</div>' : '') + '</div>' + (actions || '') + '</div>' + body + '</section>';
+  }
+  function daysLeft(iso) { return Math.round((OD.parseISO(iso) - OD.parseISO(OD.today)) / 86400000); }
+  function hm(min) { return ('0' + Math.floor(min / 60)).slice(-2) + ':' + ('0' + min % 60).slice(-2); }
+
+  /* ── 空檔計算：排除本學期課表與已排任務 ─────────────────── */
+  function freeSlots(iso) {
+    var day = OD.dow(iso), busy = [];
+    OD.timetableFor().filter(function (t) { return t.day === day; }).forEach(function (t) { busy.push({ s: OD.toMin(t.start), e: OD.toMin(t.end) }); });
+    db.tasks.filter(function (t) { return t.date === iso && t.start; }).forEach(function (t) { busy.push({ s: OD.toMin(t.start), e: OD.toMin(t.end) }); });
+    busy.sort(function (a, b) { return a.s - b.s; });
+    var spans = [], cur = 8 * 60, end = 22 * 60;
+    busy.forEach(function (b) { if (b.s - cur >= 60) spans.push([cur, b.s]); if (b.e > cur) cur = b.e; });
+    if (end - cur >= 60) spans.push([cur, end]);
+    var out = [];
+    spans.forEach(function (sp) { for (var t = sp[0]; t + 60 <= sp[1]; t += 60) out.push({ start: t, end: t + 60 }); });
+    return out;
+  }
+  function classesOn(iso) { return OD.timetableFor().filter(function (t) { return t.day === OD.dow(iso); }); }
+
+  /* ── Appbar ─────────────────────────────────────────────── */
+  OD.appbar({
+    title: '首頁',
+    sub: OD.fmtDate(OD.today) + ' · 學習規劃與日誌',
+    actions: '<button class="btn btn-secondary" data-action="demo-flow">展示流程</button>' +
+             '<button class="btn btn-primary" data-action="new-task">' + ICO.plus + '新增任務</button>'
+  });
+
+  /* ── 主要渲染 ───────────────────────────────────────────── */
+  function render() { OD.$('#content').innerHTML = planningCard() + lowerGrid() + kpis(); }
+
+  function lowerGrid() {
+    return '<div class="split" style="margin-top:16px">' + goalsCard() +
+      '<div class="stack">' + coverageCard() + upcomingCard() + '</div></div>';
+  }
+
+  function kpis() {
+    var today = OD.tasksOn(OD.today), done = today.filter(function (t) { return t.done; }).length;
+    var cov = OD.coverage();
+    return '<div class="grid-4" style="margin-top:22px">' +
+      kpi(done + ' / ' + today.length, '今日任務完成') +
+      kpi(cov.pct + '<small>%</small>', '本週學習覆蓋') +
+      kpi(db.goals.filter(function (g) { return g.current < g.total; }).length + ' 項', '進行中的學習目標') +
+      kpi(db.student.days + '<small> 天</small>', '距離 ' + db.student.targetLabel) + '</div>';
+  }
+  function kpi(v, k) { return '<div class="kpi-card"><div class="v num">' + v + '</div><div class="k">' + k + '</div></div>'; }
+
+  /* 學習規劃：任務 / 日誌 seg + 選定日期，日曆就在同一張卡內 */
+  function planningCard() {
+    var head =
+      '<div class="card-head"><div><div class="card-title">學習規劃</div><div class="card-sub">' + OD.fmtDate(st.selected) + '</div></div>' +
+        '<div class="row"><button class="btn btn-sm btn-ghost" data-action="date-prev" aria-label="前一天">‹</button>' +
+        '<button class="btn btn-sm btn-secondary" data-action="date-today">今天</button>' +
+        '<button class="btn btn-sm btn-ghost" data-action="date-next" aria-label="後一天">›</button></div></div>';
+    var seg =
+      '<div class="seg" style="margin-bottom:15px">' +
+        '<button data-action="seg" data-view="journal"' + (st.view === 'journal' ? ' class="is-active"' : '') + '>日誌</button>' +
+        '<button data-action="seg" data-view="tasks"' + (st.view === 'tasks' ? ' class="is-active"' : '') + '>任務</button>' +
+      '</div>';
+    var body = st.view === 'tasks'
+      ? calendarInner() + '<hr class="rule" style="margin:18px 0">' + tasksView()
+      : journalView();
+    return '<section class="card" data-od-id="home-planning">' + head + seg + body + '</section>';
+  }
+
+  function tasksView() {
+    var list = OD.tasksOn(st.selected);
+    if (!list.length) return '<div class="empty">這天還沒有任務。<br><button class="btn btn-sm btn-primary" data-action="new-task" style="margin-top:12px">新增任務</button></div>';
+    var done = list.filter(function (t) { return t.done; }).length;
+    return '<div class="row-between" style="margin-bottom:6px"><span class="meta">' + done + ' / ' + list.length + ' 完成</span>' +
+      '<button class="btn btn-sm btn-secondary" data-action="new-task">' + ICO.plus + '新增</button></div>' +
+      '<div class="task-list">' + list.map(taskRow).join('') + '</div>';
+  }
+
+  function taskRow(t) {
+    var s = OD.subject(t.sid), hue = s ? s.hue : 250;
+    return '<div class="task' + (t.done ? ' is-done' : '') + '">' +
+      '<button class="check" data-action="task-toggle" data-id="' + t.id + '" aria-pressed="' + t.done + '" aria-label="標記完成">' + ICO.check + '</button>' +
+      '<div class="task-time">' + (t.start || '') + (t.end ? '<br>' + t.end : '') + '</div>' +
+      '<div class="task-body"><div class="task-title">' + OD.esc(t.title) + '</div>' +
+        '<div class="task-meta"><span class="subject-dot" style="background:' + dot(hue) + '"></span>' +
+          '<span class="mini">' + OD.esc(s ? s.name : '') + '</span>' +
+          '<span class="tag tag-plain">' + OD.esc(t.kind) + '</span>' +
+          '<span class="pill pill-muted">' + t.minutes + ' 分</span>' +
+          (t.goalId ? '<span class="pill">目標任務</span>' : '') + '</div>' +
+        '<div class="task-actions"><button class="btn btn-sm btn-ghost" data-action="task-schedule" data-id="' + t.id + '">安排時程</button>' +
+          '<button class="btn btn-sm btn-ghost" data-action="task-del" data-id="' + t.id + '">刪除</button></div></div></div>';
+  }
+
+  function journalView() {
+    var list = db.journals.filter(function (j) { return j.date === st.selected; })
+      .sort(function (a, b) { return String(b.time).localeCompare(String(a.time)); });
+    var body = list.length
+      ? '<div class="tl">' + list.map(function (j) {
+          return '<div class="tl-item"><div class="tl-time">' + j.time + '</div><div class="tl-body"><div>' + OD.esc(j.text) + '</div></div></div>';
+        }).join('') + '</div>'
+      : '<div class="empty">這天還沒有日誌，寫一筆今天的學習紀錄吧。</div>';
+    var main = '<div class="field"><label>今天的學習紀錄</label>' +
+        '<textarea class="textarea" id="jText" placeholder="今天學了什麼？遇到什麼卡住的地方？"></textarea></div>' +
+      '<div class="row-between" style="margin-top:10px"><span class="meta">支援語音輸入，會模擬轉成文字</span>' +
+        '<div class="row"><button class="btn btn-sm btn-secondary" data-action="mic" data-target="#jText">' + ICO.mic + '語音輸入</button>' +
+        '<button class="btn btn-sm btn-primary" data-action="journal-add">加入日誌</button></div></div>' +
+      '<hr class="rule" style="margin:16px 0">' + body;
+    return '<div class="split"><div>' + main + '</div>' + aiJournalCard() + '</div>';
+  }
+
+  /* 匯入 AI 學習紀錄：複製整理指令 → 回到 AI 對話 → 貼回學習紀錄 */
+  function aiJournalCard() {
+    var body =
+      '<div class="ai-step">' +
+        '<div class="ai-step-n">1</div>' +
+        '<div class="ai-step-body"><div class="ai-step-title">複製整理指令</div>' +
+          '<div class="ai-prompt" id="aiPrompt" data-expanded="false">' +
+            '<div class="ai-prompt-wrap"><p class="ai-prompt-text">' + OD.esc(AI_PROMPT) + '</p></div>' +
+            '<div class="ai-prompt-actions">' +
+              '<button class="ai-prompt-more" type="button" data-action="prompt-expand">展開查看完整 Prompt<span class="chev">' + ICO.chev + '</span></button>' +
+              '<button class="ai-prompt-collapse" type="button" data-action="prompt-collapse">收合 ↑</button>' +
+              '<button class="btn btn-sm btn-primary" type="button" data-action="copy-prompt">複製 Prompt</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ai-step">' +
+        '<div class="ai-step-n">2</div>' +
+        '<div class="ai-step-body"><div class="ai-step-title">回到 AI 對話</div>' +
+          '<p class="mini" style="margin:0">將 Prompt 貼到你使用的 AI，讓它整理這次對話。</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ai-step">' +
+        '<div class="ai-step-n">3</div>' +
+        '<div class="ai-step-body"><div class="ai-step-title">貼回學習紀錄</div>' +
+          '<p class="mini" style="margin:0">把 AI 整理好的結果貼到「今天的學習紀錄」，確認內容後按「加入日誌」。</p>' +
+        '</div>' +
+      '</div>';
+    return card('匯入 AI 學習紀錄', '把對話整理成學習紀錄的三個步驟', body);
+  }
+
+  /* 學習目標 */
+  function goalsCard() {
+    if (!db.goals.length) return card('學習目標', '把大目標拆成每日任務', '<div class="empty">尚無學習目標。</div>');
+    return card('學習目標', '目標 → 每週目標 → 每日任務', db.goals.map(goalRow).join(''));
+  }
+  function goalRow(g) {
+    var s = OD.subject(g.sid), pct = Math.min(100, Math.round(g.current / g.total * 100));
+    var week = (g.weekTarget != null) ? '本週 ' + g.weekDone + ' / ' + g.weekTarget + ' ' + g.unit : g.weekLabel;
+    var d = daysLeft(g.deadline);
+    return '<div style="padding:13px 0;border-bottom:1px solid var(--border)">' +
+      '<div class="row-between" style="align-items:flex-start"><div class="grow">' +
+        '<div class="row" style="gap:7px"><span class="subject-dot" style="background:' + dot(s ? s.hue : 250) + '"></span>' +
+        '<b style="font-size:14.5px">' + OD.esc(g.title) + '</b></div>' +
+        '<div class="meta" style="margin:4px 0 8px">' + OD.esc(g.weekLabel) + ' · 截止 ' + g.deadline + '（' + (d >= 0 ? '剩 ' + d + ' 天' : '已逾期') + '）</div>' +
+      '</div><span class="pill">' + pct + '%</span></div>' +
+      '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="row-between" style="margin-top:8px"><span class="mini">' + g.current + ' / ' + g.total + ' ' + g.unit + '　·　' + week + '</span>' +
+        '<span class="row" style="gap:6px"><button class="btn btn-sm btn-ghost" data-action="goal-plan" data-id="' + g.id + '">拆解任務</button>' +
+        '<button class="btn btn-sm btn-secondary" data-action="goal-progress" data-id="' + g.id + '">完成目標</button></span></div></div>';
+  }
+
+  /* 月曆（置於學習規劃卡內） */
+  function calendarInner() {
+    var y = st.calY, m0 = st.calM;
+    var first = new Date(y, m0, 1), lead = (first.getDay() + 6) % 7;
+    var days = new Date(y, m0 + 1, 0).getDate();
+    var cells = [];
+    for (var i = 0; i < lead; i++) cells.push(null);
+    for (var d = 1; d <= days; d++) cells.push(d);
+    while (cells.length % 7) cells.push(null);
+    var labels = ['一', '二', '三', '四', '五', '六', '日'];
+    var grid = cells.map(function (d) {
+      if (!d) return '<div class="cal-cell is-out" aria-hidden="true"></div>';
+      var iso = y + '-' + ('0' + (m0 + 1)).slice(-2) + '-' + ('0' + d).slice(-2);
+      var ts = OD.tasksOn(iso);
+      var dots = ts.slice(0, 3).map(function (t) { return '<i style="background:' + dot(OD.subjectHue(t.sid)) + '"></i>'; }).join('');
+      var cls = 'cal-cell' + (iso === OD.today ? ' is-today' : '') + (iso === st.selected ? ' is-selected' : '');
+      return '<button class="' + cls + '" data-action="cal-pick" data-date="' + iso + '">' +
+        '<span class="cal-num">' + d + '</span><span class="cal-dots">' + dots + '</span>' +
+        (ts.length ? '<span class="cal-count">' + ts.length + ' 項</span>' : '') + '</button>';
+    }).join('');
+    var head = '<div class="cal-head"><div class="cal-title">' + y + ' 年 ' + (m0 + 1) + ' 月</div>' +
+      '<div class="row"><button class="btn btn-sm btn-ghost" data-action="cal-prev" aria-label="上個月">‹</button>' +
+      '<button class="btn btn-sm btn-ghost" data-action="cal-next" aria-label="下個月">›</button></div></div>';
+    return '<div class="cal-top" data-od-id="home-calendar">' + head +
+      '<div class="cal"><div class="cal-dow">' + labels.map(function (l) { return '<span>' + l + '</span>'; }).join('') + '</div>' +
+      '<div class="cal-grid">' + grid + '</div></div>' +
+      '<div class="meta" style="margin-top:10px">點選日期會切換到任務檢視，查看並安排那一天的任務。</div></div>';
+  }
+
+  /* 本週學習覆蓋 */
+  function coverageCard() {
+    var cov = OD.coverage();
+    var rows = cov.rows.map(function (r) {
+      var pct = r.target ? Math.min(100, Math.round(r.done / r.target * 100)) : 0;
+      return '<div style="margin-bottom:11px"><div class="row-between" style="margin-bottom:5px">' +
+        '<span class="mini">' + OD.esc(r.name) + '</span>' +
+        '<span class="meta">' + r.done + ' / ' + r.target + '</span></div>' +
+        '<div class="bar' + (r.short ? ' warn' : ' ok') + '"><i style="width:' + pct + '%"></i></div></div>';
+    }).join('');
+    return card('本週學習覆蓋', '依每週接觸次數規則統計',
+      '<div class="row-between" style="margin-bottom:14px"><span class="big-num" style="font-size:36px">' + cov.pct + '<span style="font-size:15px">%</span></span>' +
+      '<span class="meta">' + cov.done + ' / ' + cov.target + ' 次</span></div>' + rows,
+      cov.unmet.length ? '<span class="pill pill-warn">' + cov.unmet.length + ' 科待補</span>' : '<span class="pill pill-ok">本週達標</span>');
+  }
+
+  function upcomingCard() {
+    var list = db.goals.slice().sort(function (a, b) { return a.deadline.localeCompare(b.deadline); }).slice(0, 3);
+    var body = list.map(function (g) {
+      var d = daysLeft(g.deadline);
+      return '<div class="lrow"><span class="grow mini">' + OD.esc(g.title) + '</span>' +
+        '<span class="' + (d <= 14 ? 'pill pill-warn' : 'pill pill-muted') + '">' + (d >= 0 ? d + ' 天' : '逾期') + '</span></div>';
+    }).join('');
+    return card('即將到期', '依截止日排序', body);
+  }
+
+  /* ── 互動 ───────────────────────────────────────────────── */
+  OD.on('seg', function (el) { st.view = el.getAttribute('data-view'); render(); });
+  OD.on('cal-pick', function (el) {
+    st.selected = el.getAttribute('data-date');
+    st.view = 'tasks';
+    var dt = OD.parseISO(st.selected); st.calY = dt.getFullYear(); st.calM = dt.getMonth();
+    render();
+  });
+  OD.on('cal-prev', function () { st.calM--; if (st.calM < 0) { st.calM = 11; st.calY--; } render(); });
+  OD.on('cal-next', function () { st.calM++; if (st.calM > 11) { st.calM = 0; st.calY++; } render(); });
+  OD.on('date-prev', function () { shift(-1); });
+  OD.on('date-next', function () { shift(1); });
+  OD.on('date-today', function () { st.selected = OD.today; render(); });
+  function shift(n) {
+    var d = OD.parseISO(st.selected); d.setDate(d.getDate() + n); st.selected = OD.iso(d);
+    st.calY = d.getFullYear(); st.calM = d.getMonth(); render();
+  }
+  OD.on('task-toggle', function (el) {
+    var t = db.tasks.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+    if (!t) return; t.done = !t.done; OD.save(); render();
+    OD.toast(t.done ? '已完成：' + t.title : '已取消完成');
+  });
+  OD.on('task-del', function (el) {
+    var id = el.getAttribute('data-id');
+    db.tasks = db.tasks.filter(function (x) { return x.id !== id; }); OD.save(); render(); OD.toast('已刪除任務');
+  });
+  OD.on('journal-add', function () {
+    var v = (OD.$('#jText') || {}).value || '';
+    if (!v.trim()) { OD.toast('請先輸入內容'); return; }
+    OD.addJournal(v.trim(), st.selected); render(); OD.toast('已加入日誌');
+  });
+  OD.on('prompt-expand', function () {
+    var p = OD.$('#aiPrompt'); if (p) p.setAttribute('data-expanded', 'true');
+  });
+  OD.on('prompt-collapse', function () {
+    var p = OD.$('#aiPrompt'); if (p) p.setAttribute('data-expanded', 'false');
+  });
+  OD.on('copy-prompt', function (el) {
+    var reset = function () {
+      if (!el) return;
+      el.textContent = '已複製 ✓'; el.classList.add('is-copied');
+      setTimeout(function () { el.textContent = '複製 Prompt'; el.classList.remove('is-copied'); }, 1800);
+    };
+    var fallback = function () {
+      var ta = document.createElement('textarea');
+      ta.value = AI_PROMPT; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) { reset(); }
+      else if (el) { el.textContent = '請手動選取複製'; setTimeout(function () { el.textContent = '複製 Prompt'; }, 1800); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(AI_PROMPT).then(reset, fallback);
+    } else { fallback(); }
+  });
+
+  /* 新增任務 / 目標 */
+  function resetNT() {
+    st.nt.mode = 'time'; st.nt.timeMode = 'slot'; st.nt.slot = null; st.nt.title = '';
+    st.nt.date = null; st.nt.sidName = ''; st.nt.start = '19:00'; st.nt.end = '20:30';
+  }
+  OD.on('new-task', function () { resetNT(); openNT(); });
+  OD.on('nt-mode', function (el) {
+    captureNT();
+    st.nt.mode = el.getAttribute('data-mode');
+    refreshNT();
+  });
+  OD.on('nt-timemode', function (el) { captureNT(); st.nt.timeMode = el.getAttribute('data-tm'); refreshNT(); });
+  OD.on('nt-start', function (el) { st.nt.start = el.value; refreshNT(); });
+  OD.on('nt-end', function (el) { st.nt.end = el.value; refreshNT(); });
+  OD.on('nt-date', function (el) { st.nt.date = el.value; st.nt.slot = null; refreshNT(); });
+  OD.on('nt-slot', function (el) { st.nt.slot = +el.getAttribute('data-s'); refreshNT(); });
+
+  /* 科目選擇器互動 */
+  OD.on('subj-menu', function (el) {
+    var field = el.closest('.subj-field'); if (!field) return;
+    var menu = field.querySelector('.subj-menu'); if (!menu) return;
+    menu.hidden = !menu.hidden;
+    var inp = field.querySelector('.subj-input');
+    if (!menu.hidden) { menu.innerHTML = subjMenu(inp ? inp.value : ''); if (inp) inp.focus(); }
+  });
+  OD.on('subj-filter', function (el) {
+    var field = el.closest('.subj-field'); if (!field) return;
+    var menu = field.querySelector('.subj-menu'); if (!menu) return;
+    menu.hidden = false; menu.innerHTML = subjMenu(el.value);
+  });
+  OD.on('subj-pick', function (el) {
+    var field = el.closest('.subj-field'); if (!field) return;
+    var inp = field.querySelector('.subj-input'); if (inp) inp.value = el.getAttribute('data-name');
+    var menu = field.querySelector('.subj-menu'); if (menu) menu.hidden = true;
+    if (inp) inp.focus();
+  });
+  OD.on('subj-del', function (el) {
+    OD.removeSubject(el.getAttribute('data-id'));
+    var field = el.closest('.subj-field');
+    if (field) {
+      var menu = field.querySelector('.subj-menu');
+      var inp = field.querySelector('.subj-input');
+      if (menu) menu.innerHTML = subjMenu(inp ? inp.value : '');
+    }
+    OD.toast('已刪除科目');
+  });
+  OD.on('nt-save', function () {
+    if (st.nt.mode === 'time') {
+      var title = ((OD.$('#ntTitle') || {}).value || '').trim();
+      if (!title) { OD.toast('請輸入任務名稱'); return; }
+      var date = (OD.$('#ntDate') || {}).value || st.selected;
+      var start = '', end = '', msg = '已新增任務';
+      if (st.nt.timeMode === 'manual') {
+        start = (OD.$('#ntStart') || {}).value || '';
+        end = (OD.$('#ntEnd') || {}).value || '';
+        if (start && end && OD.toMin(end) <= OD.toMin(start)) { OD.toast('結束時間需晚於開始時間'); return; }
+        if (start && end && timeOverlap(date, start, end).length) msg = '已建立，但與課表時段重疊，請自行確認';
+      } else {
+        var slot = st.nt.slot;
+        if (slot != null) { start = hm(slot); end = hm(slot + 60); msg = '已新增任務，並避開課表時段'; }
+      }
+      db.tasks.push({
+        id: OD.uid('k'), date: date, start: start, end: end,
+        sid: OD.ensureSubject((OD.$('#ntSid') || {}).value), title: title,
+        kind: OD.$('#ntKind').value, minutes: +OD.$('#ntMin').value, done: false, type: 'time'
+      });
+      OD.save(); OD.closeModal(); render(); OD.toast(msg);
+    } else {
+      var gt = (OD.$('#ngTitle') || {}).value || '';
+      if (!gt.trim()) { OD.toast('請輸入目標名稱'); return; }
+      var mt = db.measureTypes.filter(function (m) { return m.value === OD.$('#ngMeasure').value; })[0];
+      var g = {
+        id: OD.uid('g'), title: gt.trim(), sid: OD.ensureSubject((OD.$('#ngSid') || {}).value), measure: mt.value, unit: mt.unit,
+        total: Math.max(1, +OD.$('#ngTotal').value || 1), current: 0,
+        weekLabel: '本週 ' + (+OD.$('#ngWeek').value || 1) + ' ' + mt.unit,
+        weekTarget: Math.max(1, +OD.$('#ngWeek').value || 1), weekDone: 0,
+        deadline: OD.$('#ngDeadline').value || OD.today, createdAt: OD.today, plan: []
+      };
+      db.goals.push(g); OD.save(); OD.closeModal(); render(); OD.toast('已建立學習目標');
+      openPlan(g.id);
+    }
+  });
+
+  function openNT() {
+    OD.modal({
+      title: '新增任務', sub: '先選擇要用哪種方式完成', wide: true,
+      body: ntBody(), foot: ntFoot()
+    });
+  }
+  function refreshNT() { var m = OD.$('.modal'); if (!m) return; OD.$('.modal-body', m).innerHTML = ntBody(); OD.$('.modal-foot', m).innerHTML = ntFoot(); }
+
+  function ntBody() {
+    var mode = st.nt.mode;
+    var opts = '<div class="opt-list">' +
+      ntOpt('time', '安排時程', '指定日期與時段，直接排入行事曆。', mode === 'time') +
+      ntOpt('goal', '完成目標', '設定可衡量的學習目標，系統協助拆解成每日任務。', mode === 'goal') + '</div>';
+    return opts + '<hr class="rule">' + (mode === 'time' ? ntTimeForm() : ntGoalForm());
+  }
+  function ntOpt(v, k, d, active) {
+    return '<button class="opt' + (active ? ' is-active' : '') + '" data-action="nt-mode" data-mode="' + v + '">' +
+      '<span class="opt-mark"></span><span><span class="opt-k">' + k + '</span><div class="opt-d">' + d + '</div></span></button>';
+  }
+  /* 科目選擇：可輸入新科目，也可從既有清單挑選或刪除 */
+  function subjMenu(q) {
+    q = (q || '').trim();
+    var list = db.subjects.filter(function (s) { return !q || s.name.indexOf(q) > -1; });
+    var html = list.map(function (s) {
+      return '<div class="subj-option"><button type="button" class="subj-pick" data-action="subj-pick" data-name="' + OD.esc(s.name) + '">' +
+        '<span class="subject-dot" style="background:' + dot(s.hue) + '"></span>' + OD.esc(s.name) + '</button>' +
+        '<button type="button" class="subj-del" data-action="subj-del" data-id="' + s.id + '" aria-label="刪除科目">×</button></div>';
+    }).join('');
+    var exact = q && db.subjects.some(function (s) { return s.name === q; });
+    if (q && !exact) {
+      html = '<div class="subj-option is-new"><button type="button" class="subj-pick" data-action="subj-pick" data-name="' + OD.esc(q) + '">' +
+        ICO.plus + '新增科目「' + OD.esc(q) + '」</button></div>' + html;
+    }
+    return html || '<div class="subj-empty">沒有符合的科目，直接輸入即可新增。</div>';
+  }
+  function subjField(id, value) {
+    return '<div class="field"><label>科目</label><div class="subj-field">' +
+      '<div class="subj-row">' +
+        '<input class="input subj-input" id="' + id + '" value="' + OD.esc(value || '') + '" placeholder="輸入或選擇科目" autocomplete="off" data-input="subj-filter">' +
+        '<button type="button" class="subj-toggle" data-action="subj-menu" aria-label="展開科目清單">' + ICO.chev + '</button>' +
+      '</div>' +
+      '<div class="subj-menu" hidden>' + subjMenu(value) + '</div>' +
+    '</div></div>';
+  }
+
+  /* 手動時間 vs 課表衝突（僅提醒，不阻擋） */
+  function timeOverlap(date, start, end) {
+    if (!start || !end || OD.toMin(end) <= OD.toMin(start)) return [];
+    var day = OD.dow(date), s = OD.toMin(start), e = OD.toMin(end);
+    return OD.timetableFor().filter(function (c) {
+      return c.day === day && s < OD.toMin(c.end) && e > OD.toMin(c.start);
+    });
+  }
+  function timeSection(date) {
+    var manual = st.nt.timeMode === 'manual';
+    var seg = '<div class="seg" style="margin-bottom:12px">' +
+      '<button data-action="nt-timemode" data-tm="slot"' + (!manual ? ' class="is-active"' : '') + '>避開課表的空檔</button>' +
+      '<button data-action="nt-timemode" data-tm="manual"' + (manual ? ' class="is-active"' : '') + '>手動設定時間</button>' +
+    '</div>';
+    if (manual) {
+      var s1 = st.nt.start || '19:00', e1 = st.nt.end || '20:30';
+      var conflict = timeOverlap(date, s1, e1);
+      return seg + '<div class="grid-2">' +
+        '<div class="field"><label>開始時間</label><input type="time" class="input" id="ntStart" data-change="nt-start" value="' + s1 + '"></div>' +
+        '<div class="field"><label>結束時間</label><input type="time" class="input" id="ntEnd" data-change="nt-end" value="' + e1 + '"></div>' +
+        '</div>' +
+        (conflict.length
+          ? '<div class="avoid-note warn-note" style="margin-top:9px">' + ICO.shield + '與課表時段重疊（' + conflict.map(function (c) { return c.name; }).join('、') + '），仍可建立，請自行確認。</div>'
+          : '<div class="avoid-note" style="margin-top:9px">' + ICO.shield + '這個時間沒有與課表衝突。</div>');
+    }
+    return seg + slotPicker(date, st.nt.slot) + avoidNote(date);
+  }
+
+  function captureNT() {
+    var t = OD.$('#ntTitle'); if (t) st.nt.title = t.value;
+    var d = OD.$('#ntDate'); if (d) st.nt.date = d.value;
+    var s = OD.$('#ntSid'); if (s) st.nt.sidName = s.value;
+  }
+  function ntTimeForm() {
+    var date = st.nt.date || st.selected;
+    return '<div class="form-grid">' +
+      '<div class="field span-2"><label>任務名稱</label><input class="input" id="ntTitle" value="' + OD.esc(st.nt.title) + '" placeholder="例如：線性代數 Chapter 4 練習"></div>' +
+      subjField('ntSid', st.nt.sidName) +
+      '<div class="field"><label>任務類型</label><select class="select" id="ntKind">' + KINDS.map(function (k) { return '<option>' + k + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label>日期</label><input type="date" class="input" id="ntDate" data-change="nt-date" value="' + date + '"></div>' +
+      '<div class="field"><label>預估時間</label><select class="select" id="ntMin">' + [40, 60, 90, 120].map(function (m) { return '<option' + (m === 90 ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field span-2"><label>安排時段</label>' + timeSection(date) + '</div>' +
+      '</div>';
+  }
+  function slotPicker(date, sel) {
+    var slots = freeSlots(date);
+    if (!slots.length) return '<div class="empty" style="padding:16px">這天沒有可安排的空檔。</div>';
+    return '<div class="grid-3">' + slots.map(function (s) {
+      return '<button class="opt' + (sel === s.start ? ' is-active' : '') + '" data-action="nt-slot" data-s="' + s.start + '" style="padding:10px 12px">' +
+        '<span class="opt-mark"></span><span class="opt-k num">' + hm(s.start) + ' – ' + hm(s.end) + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function avoidNote(date) {
+    var cls = classesOn(date);
+    var txt = cls.length
+      ? '已避開課表時段（' + cls.map(function (c) { return c.name; }).join('、') + '）'
+      : '這天沒有課表時段，全天可安排';
+    return '<div class="avoid-note" style="margin-top:9px">' + ICO.shield + txt + '</div>';
+  }
+  function ntGoalForm() {
+    return '<div class="form-grid">' +
+      '<div class="field span-2"><label>目標名稱</label><input class="input" id="ngTitle" placeholder="例如：完成線性代數 Chapter 1–6"></div>' +
+      subjField('ngSid', '') +
+      '<div class="field"><label>衡量方式</label><select class="select" id="ngMeasure" data-change="ng-measure">' + db.measureTypes.map(function (m) { return '<option value="' + m.value + '">' + m.label + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label>目標總量</label><input class="input" type="number" min="1" id="ngTotal" value="6"></div>' +
+      '<div class="field"><label>每週目標</label><input class="input" type="number" min="1" id="ngWeek" value="2"></div>' +
+      '<div class="field"><label>截止日</label><input type="date" class="input" id="ngDeadline" value="' + OD.iso(new Date(OD.parseISO(OD.today).getTime() + 56 * 86400000)) + '"></div>' +
+      '<div class="field"><label>單位</label><input class="input" id="ngUnit" value="Chapters" disabled></div>' +
+      '</div><div class="meta" style="margin-top:10px">建立後會依每週目標自動拆解成每日任務，並避開你的課表時段。</div>';
+  }
+  OD.on('ng-measure', function (el) {
+    var mt = db.measureTypes.filter(function (m) { return m.value === el.value; })[0];
+    var u = OD.$('#ngUnit'); if (u && mt) u.value = mt.unit;
+  });
+  function ntFoot() {
+    return '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+      '<button class="btn btn-primary" data-action="nt-save">' + (st.nt.mode === 'time' ? '建立任務' : '建立目標並拆解') + '</button>';
+  }
+
+  /* 拆解目標 → 每日任務 */
+  OD.on('goal-plan', function (el) { openPlan(el.getAttribute('data-id')); });
+  function genPlan(g) {
+    var weeks = Math.max(1, Math.ceil(Math.max(7, daysLeft(g.deadline)) / 7));
+    var remaining = Math.max(1, g.total - g.current);
+    var perWeek = Math.max(1, Math.ceil(remaining / weeks));
+    var base = OD.weekStart(OD.today), items = [], left = remaining;
+    for (var i = 0; i < Math.min(weeks, 8) && left > 0; i++) {
+      [0, 2, 5].forEach(function (off) {
+        if (left <= 0) return;
+        var d = OD.parseISO(base); d.setDate(d.getDate() + i * 7 + off);
+        var amt = Math.min(perWeek, left); left -= amt;
+        items.push({ date: OD.iso(d), amount: amt, kind: off === 2 ? '練習' : '理解' });
+      });
+    }
+    return { weeks: weeks, perWeek: perWeek, items: items };
+  }
+  function openPlan(id) {
+    var g = OD.goal(id); if (!g) return;
+    var plan = genPlan(g);
+    var body = '<div class="row-between"><div><div class="card-title">' + OD.esc(g.title) + '</div>' +
+        '<div class="card-sub">每週目標 ' + plan.perWeek + ' ' + g.unit + '，共 ' + plan.weeks + ' 週</div></div>' +
+        '<span class="pill">' + (g.total - g.current) + ' ' + g.unit + ' 待完成</span></div>' +
+      '<div class="tl">' + plan.items.map(function (it) {
+        var cls = classesOn(it.date);
+        return '<div class="tl-item"><div class="tl-time">' + OD.fmtDateShort(it.date) + '</div>' +
+          '<div class="tl-body"><div class="row-between"><b>' + OD.esc(it.kind) + '　' + it.amount + ' ' + g.unit + '</b>' +
+          (cls.length ? '<span class="tag">' + cls.length + ' 節課</span>' : '<span class="tag tag-ok">無課</span>') + '</div>' +
+          '<div class="meta">' + OD.fmtDate(it.date) + '</div></div></div>';
+      }).join('') + '</div>' +
+      '<div class="avoid-note">' + ICO.shield + '產生的任務會自動避開課表時段。</div>';
+    OD.modal({
+      title: '拆解為每日任務', sub: '目標 → 每週目標 → 每日任務', wide: true, body: body,
+      foot: '<button class="btn btn-secondary" data-action="modal-close">稍後再說</button>' +
+            '<button class="btn btn-primary" data-action="plan-confirm" data-id="' + id + '">建立 ' + plan.items.length + ' 個任務</button>'
+    });
+  }
+  OD.on('plan-confirm', function (el) {
+    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
+    var plan = genPlan(g);
+    plan.items.forEach(function (it) {
+      var slots = freeSlots(it.date), slot = slots.length ? slots[0].start : null;
+      db.tasks.push({
+        id: OD.uid('k'), date: it.date, start: slot != null ? hm(slot) : '', end: slot != null ? hm(slot + 60) : '',
+        sid: g.sid, title: g.title + ' · ' + it.amount + ' ' + g.unit, kind: it.kind,
+        minutes: 90, done: false, type: 'time', goalId: g.id
+      });
+    });
+    OD.save(); OD.closeModal(); render(); OD.toast('已建立 ' + plan.items.length + ' 個任務');
+  });
+
+  /* 完成目標（記錄進度） */
+  OD.on('goal-progress', function (el) {
+    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
+    OD.modal({
+      title: '完成目標進度', sub: OD.esc(g.title), body:
+        '<div class="row-between"><span class="mini">目前進度</span><b class="num">' + g.current + ' / ' + g.total + ' ' + g.unit + '</b></div>' +
+        '<div class="bar"><i style="width:' + Math.min(100, g.current / g.total * 100) + '%"></i></div>' +
+        '<div class="field"><label>本次完成數量（' + g.unit + '）</label><input class="input" type="number" min="1" id="gpAmt" value="1"></div>',
+      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+            '<button class="btn btn-primary" data-action="goal-progress-save" data-id="' + g.id + '">記錄進度</button>'
+    });
+  });
+  OD.on('goal-progress-save', function (el) {
+    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
+    var amt = Math.max(1, +OD.$('#gpAmt').value || 1);
+    g.current = Math.min(g.total, g.current + amt);
+    if (g.weekTarget != null) g.weekDone = Math.min(g.weekTarget, g.weekDone + amt);
+    OD.save(); OD.closeModal(); render();
+    OD.toast(g.current >= g.total ? '目標達成：' + g.title : '已記錄進度');
+  });
+
+  /* 安排時程（既有任務） */
+  OD.on('task-schedule', function (el) {
+    var t = db.tasks.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!t) return;
+    st.sch = { id: t.id, date: t.date, slot: t.start ? OD.toMin(t.start) : null };
+    openSch();
+  });
+  function openSch() {
+    OD.modal({
+      title: '安排時程', sub: '系統會列出避開課表後的空檔', wide: true, body: schBody(),
+      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+            '<button class="btn btn-primary" data-action="sch-confirm">確定安排</button>'
+    });
+  }
+  function schBody() {
+    var t = db.tasks.filter(function (x) { return x.id === st.sch.id; })[0];
+    var cls = classesOn(st.sch.date);
+    var busy = cls.map(function (c) {
+      return '<div class="lrow"><span class="row" style="gap:9px"><span class="subject-dot lg" style="background:' + dot(250) + '"></span>' +
+        '<b style="font-size:13.5px">' + OD.esc(c.name) + '</b><span class="tag">課表</span></span>' +
+        '<span class="meta">' + c.start + ' – ' + c.end + '</span></div>';
+    }).join('') || '<div class="empty" style="padding:10px">這天沒有課表時段。</div>';
+    var slots = freeSlots(st.sch.date);
+    var pick = slots.length
+      ? '<div class="grid-3">' + slots.map(function (s) {
+          return '<button class="opt' + (st.sch.slot === s.start ? ' is-active' : '') + '" data-action="sch-slot" data-s="' + s.start + '" style="padding:10px 12px">' +
+            '<span class="opt-mark"></span><span class="opt-k num">' + hm(s.start) + ' – ' + hm(s.end) + '</span></button>';
+        }).join('') + '</div>'
+      : '<div class="empty">這天已無 60 分鐘以上的空檔。</div>';
+    return '<div class="field"><label>任務</label><div class="card" style="padding:12px 14px"><b>' + OD.esc(t.title) + '</b>' +
+        '<div class="meta">' + OD.subjectName(t.sid) + ' · ' + t.minutes + ' 分</div></div></div>' +
+      '<div class="field"><label>日期</label><input type="date" class="input" value="' + st.sch.date + '" data-change="sch-date"></div>' +
+      '<div class="field"><label>課表時段（不可安排）</label>' + busy + '</div>' +
+      '<div class="field"><label>可安排空檔</label>' + pick + '</div>' +
+      (cls.length ? '<div class="avoid-note">' + ICO.shield + '已避開課表時段</div>' : '');
+  }
+  OD.on('sch-date', function (el) { st.sch.date = el.value; st.sch.slot = null; var m = OD.$('.modal-body'); if (m) m.innerHTML = schBody(); });
+  OD.on('sch-slot', function (el) { st.sch.slot = +el.getAttribute('data-s'); var m = OD.$('.modal-body'); if (m) m.innerHTML = schBody(); });
+  OD.on('sch-confirm', function () {
+    if (st.sch.slot == null) { OD.toast('請選擇一個空檔'); return; }
+    var t = db.tasks.filter(function (x) { return x.id === st.sch.id; })[0]; if (!t) return;
+    t.date = st.sch.date; t.start = hm(st.sch.slot); t.end = hm(st.sch.slot + 60);
+    OD.save(); OD.closeModal(); st.selected = t.date; render(); OD.toast('已安排時程，並避開課表時段');
+  });
+
+  /* 展示流程 */
+  OD.on('demo-flow', function () {
+    var steps = [
+      ['首頁', '預設顯示日誌；切到任務後點月曆日期即可安排當天任務。', 'index.html'],
+      ['語音輸入', '點右下角麥克風，停止轉文字後會顯示任務建議，勾選後按「加入任務並放入文字框」即可同時建立任務與放入內容。', 'index.html'],
+      ['修課與畢業', '模擬匯入成績單，檢查畢業學分缺口。', 'courses.html'],
+      ['學習歷程', '新增一筆成果，從已修課程中選擇對應課程。', 'achievements.html'],
+      ['能力診斷', '檢視能力分數與能力證據，找出相對強項與待補強。', 'diagnosis.html'],
+      ['職涯探索', '依能力輪廓查看可能方向與能力缺口，找出還需要補強的能力。', 'explore.html'],
+      ['學習資源', '把能力缺口對應的資源加入學習目標，自動拆解成任務。', 'resources.html'],
+      ['簡歷', '切換求職版／升學版，預覽自動整理的簡歷。', 'resume.html'],
+      ['年度回顧', '檢視 2026 的學習數據總結。', 'recap.html']
+    ];
+    OD.modal({
+      title: '展示流程', sub: '建議的 Demo 動線', body:
+        '<div class="tl">' + steps.map(function (s, i) {
+          return '<div class="tl-item"><div class="tl-time num">' + ('0' + (i + 1)).slice(-2) + '</div>' +
+            '<div class="tl-body"><div class="row-between"><b>' + s[0] + '</b>' +
+            '<a class="btn btn-sm btn-secondary" href="' + s[2] + '">前往</a></div>' +
+            '<div class="meta">' + s[1] + '</div></div></div>';
+        }).join('') + '</div>',
+      foot: '<button class="btn btn-primary" data-action="modal-close">開始</button>'
+    });
+  });
+
+  /* 語音 FAB 在此頁改成開啟「新增任務」 */
+  OD.on('voice-open', function () {
+    OD.openVoice({ date: st.selected, onTask: function (text) { st.nt.mode = 'time'; st.nt.title = text; st.nt.slot = null; openNT(); } });
+  });
+  OD.on('mic', function (el) { OD.openVoice({ target: el.getAttribute('data-target') || null, date: st.selected }); });
+  OD.listen('refresh', function () { render(); });
+
+  /* 由語音建立的待處理任務 */
+  (function () {
+    if (location.search.indexOf('newGoal=1') > -1) {
+      var p = null; try { p = localStorage.getItem('shiji:pendingTask'); } catch (e) {}
+      if (p) {
+        try { localStorage.removeItem('shiji:pendingTask'); } catch (e) {}
+        st.nt.mode = 'time'; st.nt.title = p; openNT();
+      }
+    }
+  })();
+
+  render();
+})();
+</script>
+</body>
+</html>

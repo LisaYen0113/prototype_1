@@ -1,23 +1,87 @@
 {
   "schema": "open-design.design-manifest.v1",
   "title": "1fd502dd-75f0-47fe-aaad-eb668f73a12e",
-  "entryFile": "career-compass.html",
+  "entryFile": "index.html",
   "sourceFiles": {
     "all": [
+      "achievements.html",
+      "assets/app.js",
+      "assets/mock-data.js",
+      "assets/theme.css",
       "career-compass.html",
+      "courses.html",
+      "diagnosis.html",
+      "explore.html",
+      "index.html",
+      "recap.html",
+      "resources.html",
+      "resume.html",
       "study-planner.html"
     ],
     "html": [
+      "achievements.html",
       "career-compass.html",
+      "courses.html",
+      "diagnosis.html",
+      "explore.html",
+      "index.html",
+      "recap.html",
+      "resources.html",
+      "resume.html",
       "study-planner.html"
     ],
-    "css": [],
-    "scriptsAndComponents": [],
+    "css": [
+      "assets/theme.css"
+    ],
+    "scriptsAndComponents": [
+      "assets/app.js",
+      "assets/mock-data.js"
+    ],
     "assets": []
   },
   "screens": [
     {
+      "file": "achievements.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
       "file": "career-compass.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
+      "file": "courses.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
+      "file": "diagnosis.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
+      "file": "explore.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
+      "file": "index.html",
+      "role": "launcher-overview",
+      "implementationNote": "Use this as the navigation/overview entry only; implement each linked screen file as its own route/surface."
+    },
+    {
+      "file": "recap.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
+      "file": "resources.html",
+      "role": "screen",
+      "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
+    },
+    {
+      "file": "resume.html",
       "role": "screen",
       "implementationNote": "Preserve visual hierarchy, responsive behavior, and interactive states from this screen."
     },
@@ -29,7 +93,7 @@
   ],
   "screenFilePolicy": {
     "mode": "screen-file-first",
-    "entryFileRole": "primary-screen",
+    "entryFileRole": "launcher-overview",
     "rules": [
       "Each distinct user-facing screen or surface must be delivered and implemented as its own file/route.",
       "If a landing page is present or requested, keep it in landing.html and do not merge it into the product app screen.",
@@ -58,7 +122,7 @@
   },
   "tokens": {
     "source": [
-      "career-compass.html"
+      "assets/theme.css"
     ],
     "required": [
       "background",
@@ -77,7 +141,8 @@
   },
   "interactions": {
     "source": [
-      "career-compass.html"
+      "assets/app.js",
+      "assets/mock-data.js"
     ],
     "requiredStates": [
       "default",

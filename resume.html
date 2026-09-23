@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>簡歷 · 學習生涯工作台</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .stack > .card, .grid-2 > .card, .grid-3 > .card{ margin-top: 0; }
+
+  .sheet{ background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: 0 1px 2px rgba(0,0,0,.03); padding: 44px 48px; max-width: 860px; margin: 0 auto; }
+  .r-head{ display: flex; justify-content: space-between; gap: 26px; align-items: flex-start;
+    border-bottom: 2px solid var(--fg); padding-bottom: 18px; }
+  .r-name{ font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
+  .r-role{ color: var(--muted); margin-top: 5px; font-size: 14px; }
+  .r-contact{ text-align: right; font-size: 12.5px; color: var(--muted); line-height: 1.75; white-space: nowrap; }
+  .r-contact b{ color: color-mix(in oklch, var(--fg) 80%, var(--muted)); font-weight: 600; }
+  .r-sec{ margin-top: 26px; }
+  .r-sec > h3{ font-size: 15.5px; margin: 0 0 12px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+  .r-item{ display: flex; justify-content: space-between; gap: 18px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .r-item:last-child{ border-bottom: 0; padding-bottom: 0; }
+  .r-item h4{ font-size: 14px; margin: 0; }
+  .r-item .r-sub{ font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .r-item .r-when{ font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .r-item p{ margin: 6px 0 0; font-size: 13px; color: color-mix(in oklch, var(--fg) 76%, var(--muted)); line-height: 1.65; }
+  .r-body p{ margin: 0; font-size: 13.5px; line-height: 1.75; color: color-mix(in oklch, var(--fg) 80%, var(--muted)); white-space: pre-line; }
+  .r-chips{ margin-top: 7px; }
+  .r-grid2{ display: grid; grid-template-columns: 1fr 1fr; gap: 4px 26px; }
+  @media (max-width: 700px){ .r-grid2{ grid-template-columns: 1fr; } .sheet{ padding: 30px 22px; } .r-head{ flex-direction: column; } .r-contact{ text-align: left; } }
+
+  /* 版型：現代 */
+  .sheet.tpl-modern .r-head{ border-bottom-color: var(--accent); }
+  .sheet.tpl-modern .r-name{ color: color-mix(in oklch, var(--accent) 72%, var(--fg)); }
+  .sheet.tpl-modern .r-sec > h3{ color: color-mix(in oklch, var(--accent) 72%, var(--fg)); border-bottom-color: color-mix(in oklch, var(--accent) 28%, var(--border)); }
+  .sheet.tpl-modern .tag{ border-color: color-mix(in oklch, var(--accent) 26%, var(--border)); }
+  /* 版型：極簡 */
+  .sheet.tpl-minimal .r-head{ border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+  .sheet.tpl-minimal .r-name{ font-weight: 650; }
+  .sheet.tpl-minimal .r-sec{ margin-top: 22px; }
+  .sheet.tpl-minimal .r-sec > h3{ border-bottom: 0; padding-bottom: 2px; color: var(--muted); font-size: 12.5px; letter-spacing: .04em; }
+  .sheet.tpl-minimal .r-item{ border-bottom: 0; padding: 7px 0; }
+
+  @media print {
+    .sidebar, .appbar, .no-print, .toast-root, #voiceRoot{ display: none !important; }
+    .app{ display: block; }
+    .content{ padding: 0 !important; max-width: none; }
+    body{ background: var(--surface); }
+    .sheet{ border: 0; box-shadow: none; border-radius: 0; padding: 0; max-width: none; }
+  }
+</style>
+</head>
+<body data-page="resume">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="appbar" id="appbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<div class="toast-root" id="toastRoot"></div>
+<div id="modalRoot"></div>
+<div id="voiceRoot"></div>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var db = OD.db;
+  var ICO = {
+    print: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="4" y="9" width="16" height="7" rx="2"/><path d="M7 14h10v7H7z"/></svg>',
+    eye: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+  };
+  var MODE = { job: db.resumeModes[0], grad: db.resumeModes[1] };
+  var SUMMARY = {
+    job: '資訊工程學系三年級，具後端開發實習與專題實作經驗，熟悉 Node.js、SQL 與 Git。\n以資料庫與系統設計為核心，持續累積可交付的專案成果，期望投入後端開發領域。',
+    grad: '資訊工程學系三年級，現正準備資訊工程研究所考試入學。\n大學期間以資料庫、資料結構與演算法為主軸，專題聚焦資料庫系統設計，具獨立完成專案的能力。'
+  };
+  var TARGET = { job: '後端開發實習 / 初階軟體工程師', grad: '報考資訊工程研究所（考試入學）' };
+  var DIR = { job: '求職版', grad: '升學版' };
+
+  var st = { mode: 'job', target: TARGET.job, summary: SUMMARY.job, showGpa: true, showScores: false,
+    template: db.resumeProfile.template || 'classic' };
+
+  function esc(s) { return OD.esc(s); }
+  function skillTag(name) { return '<span class="tag tag-plain">' + esc(name) + '</span>'; }
+  function level(score) { return score >= 80 ? '熟悉' : score >= 70 ? '良好' : '具基礎'; }
+  function byTypes(types) {
+    return db.achievements.filter(function (a) { return types.indexOf(a.type) > -1; })
+      .sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  }
+  function completedCourses() {
+    return db.courses.filter(function (c) { return c.grade && c.credits; });
+  }
+
+  OD.appbar({
+    title: '簡歷',
+    sub: '依你的修課、成果與能力自動帶入，可切換求職與升學兩種版本',
+    actions: '<button class="btn btn-secondary no-print" data-action="resume-print">' + ICO.print + '匯出 PDF</button>'
+  });
+
+  /* ── 上方控制列 ─────────────────────────────────────────── */
+  function toolbar() {
+    return '<section class="card no-print" style="margin-top:0" data-od-id="resume-controls">' +
+      '<div class="card-head"><div><div class="card-title">簡歷設定</div>' +
+        '<div class="card-sub">' + esc(MODE[st.mode].desc) + '</div></div>' +
+        '<div class="seg" role="tablist">' +
+          db.resumeModes.map(function (m) {
+            return '<button role="tab" aria-selected="' + (st.mode === m.value) + '"' + (st.mode === m.value ? ' class="is-active"' : '') + ' data-action="resume-mode" data-mode="' + m.value + '">' + esc(m.label) + '</button>';
+          }).join('') +
+        '</div></div>' +
+      '<div class="section-title" style="margin-top:4px">基本資料</div>' +
+      '<div class="form-grid">' +
+        pField('姓名', 'name', '王小明', '') +
+        pField('Email', 'email', 'name@example.com', '') +
+        pField('電話', 'phone', '0912-345-678', '') +
+        pField('地點', 'location', '城市／地區', '') +
+        pField('網站', 'website', 'your.site', '') +
+        pField('GitHub', 'github', 'github.com/you', '') +
+      '</div>' +
+      '<hr class="rule" style="margin:18px 0">' +
+      '<div class="section-title">版面版型</div>' +
+      tplPicker() +
+      '<hr class="rule" style="margin:18px 0">' +
+      '<div class="form-grid">' +
+        '<div class="field span-2"><label>' + (st.mode === 'job' ? '應徵目標' : '報考目標') + '</label>' +
+          '<input class="input" id="rs-target" data-input="resume-target" value="' + esc(st.target) + '"></div>' +
+        '<div class="field span-2"><label>' + (st.mode === 'job' ? '個人簡介' : '學習與研究簡介') + '</label>' +
+          '<textarea class="textarea" id="rs-summary" data-input="resume-summary" rows="3">' + esc(st.summary) + '</textarea></div>' +
+      '</div>' +
+      '<div class="row" style="gap:16px;margin-top:6px;flex-wrap:wrap">' +
+        '<label class="opt"><input type="checkbox" data-change="resume-gpa"' + (st.showGpa ? ' checked' : '') + '><span>顯示 GPA</span></label>' +
+        '<label class="opt"><input type="checkbox" data-change="resume-scores"' + (st.showScores ? ' checked' : '') + '><span>顯示能力分數</span></label>' +
+        '<span class="meta">內容依各頁資料即時帶入，修改後不影響原始資料。</span>' +
+      '</div></section>';
+  }
+  function pField(label, key, ph, span) {
+    var p = db.resumeProfile;
+    return '<div class="field' + (span ? ' ' + span : '') + '"><label>' + label + '</label>' +
+      '<input class="input" id="rp-' + key + '" data-input="resume-profile" data-key="' + key + '" placeholder="' + esc(ph) + '" value="' + esc(p[key] || '') + '"></div>';
+  }
+  function tplPicker() {
+    return '<div class="tpl-grid">' + db.resumeTemplates.map(function (t) {
+      var on = st.template === t.id;
+      return '<button type="button" class="tpl-card' + (on ? ' is-active' : '') + '" data-action="resume-tpl" data-id="' + t.id + '">' +
+        '<div class="tpl-thumb"><i class="w"></i><i></i><i></i></div>' +
+        '<div class="tpl-k">' + esc(t.name) + '</div>' +
+        '<div class="tpl-d">' + esc(t.desc) + '</div></button>';
+    }).join('') + '</div>';
+  }
+
+  /* ── 履歷紙 ─────────────────────────────────────────────── */
+  function contactLine() {
+    var p = db.resumeProfile;
+    var rows = [p.email, p.phone, p.location].filter(function (x) { return x; })
+      .map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('');
+    var links = '';
+    if (p.website) links += '<div><b>網站</b> ' + esc(p.website) + '</div>';
+    if (p.github) links += '<div><b>GitHub</b> ' + esc(p.github) + '</div>';
+    return '<div class="r-contact">' + rows + links + '</div>';
+  }
+  function secH(title) { return '<div class="r-sec"><h3>' + esc(title) + '</h3>'; }
+  function items(list) { return list.join('') + '</div>'; }
+  function achItem(a) {
+    return '<div class="r-item"><div style="min-width:0"><h4>' + esc(a.title) + '</h4>' +
+      (a.tech && a.tech.length ? '<div class="r-chips">' + a.tech.map(skillTag).join('') + '</div>' : '') +
+      (a.summary ? '<p>' + esc(a.summary) + '</p>' : '') +
+      '</div><span class="r-when">' + esc(a.semester || a.date || '') + (a.grade ? ' · ' + esc(a.grade) : '') + '</span></div>';
+  }
+  function courseItem(c) {
+    return '<div class="r-item"><div><h4>' + esc(c.name) + '</h4>' +
+      '<div class="r-sub">' + esc(c.credits) + ' 學分 · ' + esc(c.semester) + '</div></div>' +
+      '<span class="r-when">' + esc(c.grade) + '</span></div>';
+  }
+
+  function sheet() {
+    var s = db.student;
+    var skillList = db.skills.slice().sort(function (a, b) { return b.score - a.score; });
+    var projects = byTypes(['project', 'course']);
+    var interns = byTypes(['intern']);
+    var honors = byTypes(['contest', 'cert', 'activity']);
+    var html = '<div class="sheet tpl-' + st.template + '" data-od-id="resume-sheet">' +
+      '<div class="r-head"><div>' +
+        '<div class="r-name">' + esc(db.resumeProfile.name || s.name) + '</div>' +
+        '<div class="r-role">' + esc(st.target || MODE[st.mode].label) + '</div>' +
+        '<div class="meta" style="margin-top:6px">' + esc(s.school) + ' · ' + esc(s.program) + ' · ' + esc(s.grade) + '</div>' +
+      '</div>' + contactLine() + '</div>';
+
+    /* 簡介 */
+    html += secH(st.mode === 'job' ? '個人簡介' : '學習與研究簡介') +
+      '<div class="r-body"><p>' + esc(st.summary) + '</p></div></div>';
+
+    /* 學歷 */
+    html += secH('學歷') + items([
+      '<div class="r-item"><div><h4>' + esc(s.school) + '</h4>' +
+        '<div class="r-sub">' + esc(s.program) + ' 學士班</div>' +
+        (st.showGpa ? '<p>累計 GPA ' + OD.gpa() + ' / 4.3 · 已修 ' + completedCourses().length + ' 門課</p>' : '') +
+      '</div><span class="r-when">' + esc(s.grade) + '</span></div>'
+    ]);
+
+    /* 升學版：研究學習；求職版：專業技能 */
+    if (st.mode === 'grad') {
+      html += secH('研究學習與專題') + items((projects.length ? projects : [null]).map(function (a) { return a ? achItem(a) : '<div class="meta">尚無資料</div>'; }));
+      html += secH('核心修課與成績') + items(completedCourses()
+        .filter(function (c) { return c.category === 'required'; })
+        .slice(-8).reverse().map(courseItem));
+    } else {
+      html += secH('專業技能') + items([
+        '<div class="r-item"><div style="width:100%"><div class="chip-set">' +
+          skillList.map(function (k) { return '<span class="tag tag-plain">' + esc(k.name) + (st.showScores ? ' ' + k.score : '') + '</span>'; }).join('') +
+        '</div></div></div>'
+      ]);
+      html += secH('專題與專案') + items(projects.map(achItem));
+    }
+
+    /* 實習與工作（兩版皆有，順序不同） */
+    if (st.mode === 'job' && interns.length) {
+      html += secH('實習與工作經驗') + items(interns.map(achItem));
+    }
+
+    /* 榮譽與課外活動 */
+    html += secH(st.mode === 'job' ? '競賽與課外活動' : '競賽與其他成果') + items(honors.map(achItem));
+
+    /* 能力（升學版補上能力輪廓） */
+    if (st.mode === 'grad') {
+      html += secH('能力輪廓') + items([
+        '<div class="r-item"><div style="width:100%"><div class="chip-set">' +
+          skillList.map(function (k) { return '<span class="tag tag-plain">' + esc(k.name) + '（' + level(k.score) + '）</span>'; }).join('') +
+        '</div></div></div>'
+      ]);
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function render() {
+    OD.$('#content').innerHTML = toolbar() + '<div id="sheetWrap" style="margin-top:16px">' + sheet() + '</div>';
+  }
+  function renderSheet() { var w = OD.$('#sheetWrap'); if (w) w.innerHTML = sheet(); }
+
+  /* ── 互動 ───────────────────────────────────────────────── */
+  OD.on('resume-mode', function (el) {
+    var m = el.getAttribute('data-mode'); if (m === st.mode) return;
+    st.mode = m; st.target = TARGET[m]; st.summary = SUMMARY[m];
+    render();
+  });
+  OD.on('resume-print', function () { OD.toast('已準備列印版；正式版將匯出 PDF'); setTimeout(function () { window.print(); }, 350); });
+  OD.on('resume-target', function (el) { st.target = el.value; renderSheet(); });
+  OD.on('resume-summary', function (el) { st.summary = el.value; renderSheet(); });
+  OD.on('resume-gpa', function (el) { st.showGpa = el.checked; renderSheet(); });
+  OD.on('resume-scores', function (el) { st.showScores = el.checked; renderSheet(); });
+  OD.on('resume-profile', function (el) {
+    db.resumeProfile[el.getAttribute('data-key')] = el.value;
+    OD.save(); renderSheet();
+  });
+  OD.on('resume-tpl', function (el) {
+    st.template = el.getAttribute('data-id');
+    db.resumeProfile.template = st.template;
+    OD.save(); render();
+    OD.toast('已套用「' + (db.resumeTemplates.filter(function (t) { return t.id === st.template; })[0] || {}).name + '」版型');
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

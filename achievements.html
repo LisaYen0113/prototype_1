@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>學習歷程 · 學習生涯工作台</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .stack > .card{ margin-top: 0; }
+  .ach-sum{ margin: 11px 0 0; font-size: 13.5px; line-height: 1.62; color: color-mix(in oklch, var(--fg) 76%, var(--muted)); }
+  .spec-row{ display: flex; align-items: flex-start; gap: 10px; margin-top: 11px; }
+  .spec-row > .mini{ min-width: 34px; padding-top: 3px; }
+  .fchip{ display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 12.5px; color: var(--muted); cursor: pointer; font-family: inherit; }
+  .fchip:hover{ color: var(--fg); border-color: color-mix(in oklch, var(--fg) 20%, var(--border)); }
+  .fchip.is-on{ background: var(--fg); border-color: var(--fg); color: var(--bg); font-weight: 600; }
+  .fchip .c{ font-family: var(--font-mono); font-size: 11px; opacity: .72; }
+  .sk-chip{ display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--fg-soft); font-size: 12px; color: color-mix(in oklch, var(--fg) 80%, var(--muted)); }
+  .sk-chip .c{ font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .pick{ display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+  .pick:hover{ border-color: color-mix(in oklch, var(--accent) 45%, var(--border)); }
+  .pick.on{ border-color: color-mix(in oklch, var(--accent) 55%, var(--border)); background: color-mix(in oklch, var(--accent-soft) 55%, var(--surface)); }
+  .pick .box{ width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border); display: grid; place-items: center; flex: none; }
+  .pick.on .box{ background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .pick .box .ico{ width: 12px; height: 12px; opacity: 0; }
+  .pick.on .box .ico{ opacity: 1; }
+</style>
+</head>
+<body data-page="achievements">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="appbar" id="appbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<div class="toast-root" id="toastRoot"></div>
+<div id="modalRoot"></div>
+<div id="voiceRoot"></div>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var db = OD.db;
+  var ICO = {
+    plus: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    mic: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>',
+    link: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5 14.5 9.5"/><path d="M7.5 10.5 6 12a3.6 3.6 0 0 0 5 5l1.5-1.5"/><path d="M16.5 13.5 18 12a3.6 3.6 0 0 0-5-5l-1.5 1.5"/></svg>',
+    edit: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16z"/><path d="m14 6 4 4"/></svg>',
+    check: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9 17.5 20 6.5"/></svg>',
+    star: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 2.4 5 5.6.7-4 3.9 1 5.4-5-2.7-5 2.7 1-5.4-4-3.9 5.6-.7z"/></svg>',
+    file: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>'
+  };
+
+  /* ── 資料查詢 ───────────────────────────────────────────── */
+  function typeLabel(v) {
+    var t = db.achievementTypes.filter(function (x) { return x.value === v; })[0];
+    return t ? t.label : v;
+  }
+  function countByType(v) { return db.achievements.filter(function (a) { return a.type === v; }).length; }
+  function evidenceOf(id) { return db.skillEvidence.filter(function (e) { return e.source === 'achievement' && e.sourceId === id; }); }
+  function courseName(id) { var c = id ? OD.course(id) : null; return c ? c.name : ''; }
+  function normUrl(u) { u = String(u || '').trim(); if (!u) return ''; return /^https?:\/\//i.test(u) ? u : 'https://' + u; }
+  function linkChip(a) {
+    if (!a || !a.link) return '';
+    return '<a class="file-chip" href="' + OD.esc(normUrl(a.link)) + '" target="_blank" rel="noopener noreferrer">' +
+      ICO.link + OD.esc(a.linkLabel || a.link) + '</a>';
+  }
+  function splitList(v) {
+    return String(v || '').split(/[,\uFF0C\u3001\n]/).map(function (s) { return s.trim(); })
+      .filter(function (s) { return s; });
+  }
+  function pct(a, b) { return b ? Math.min(100, Math.round(a / b * 100)) : 0; }
+  function card(title, sub, body, actions) {
+    return '<section class="card" data-od-id="' + OD.slug(title) + '" style="margin-top:0"><div class="card-head"><div><div class="card-title">' + title + '</div>' +
+      (sub ? '<div class="card-sub">' + sub + '</div>' : '') + '</div>' + (actions || '') + '</div>' + body + '</section>';
+  }
+
+  var st = { type: 'all', draft: null, picked: [], editId: null };
+  var visible = function () {
+    return db.achievements.filter(function (a) { return st.type === 'all' || a.type === st.type; })
+      .slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  };
+
+  OD.appbar({
+    title: '學習歷程',
+    sub: '累積 ' + db.achievements.length + ' 項成果 · 連結課程、能力與應用場景',
+    actions: '<button class="btn btn-primary" data-action="add-achievement">' + ICO.plus + '新增成果</button>'
+  });
+
+  function render() { OD.$('#content').innerHTML = '<div style="margin-bottom:16px">' + OD.flowStrip('portfolio') + '</div><div class="split">' + listCol() + sideCol() + '</div>'; }
+
+  /* ── 左：成果清單 ───────────────────────────────────────── */
+  function filterBar() {
+    var chips = ['all'].concat(db.achievementTypes.map(function (t) { return t.value; })).map(function (v) {
+      var n = v === 'all' ? db.achievements.length : countByType(v);
+      if (v !== 'all' && !n) return '';
+      return '<button class="fchip' + (st.type === v ? ' is-on' : '') + '" data-action="type-filter" data-v="' + v + '">' +
+        (v === 'all' ? '全部' : OD.esc(typeLabel(v))) + '<span class="c">' + n + '</span></button>';
+    }).join('');
+    return card('成果列表', '點選類型可篩選，共 ' + db.achievements.length + ' 項',
+      '<div class="chip-set">' + chips + '</div>');
+  }
+  function listCol() {
+    var items = visible();
+    var list = items.length
+      ? items.map(achCard).join('')
+      : '<section class="card" data-od-id="achievements-empty" style="margin-top:0"><div class="empty">此類型尚無成果紀錄。</div></section>';
+    return '<div class="stack">' + filterBar() + list + '</div>';
+  }
+  function achCard(a) {
+    var ev = evidenceOf(a.id);
+    var cn = courseName(a.courseId);
+    var head = '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<span class="tag tag-plain">' + OD.esc(typeLabel(a.type)) + '</span>' +
+      '<span class="meta num">' + OD.esc(a.date) + '</span>' +
+      (a.grade ? '<span class="tag">成績 ' + OD.esc(a.grade) + '</span>' : '') + '</div>';
+    var tech = a.tech && a.tech.length
+      ? '<div class="spec-row"><span class="mini">技術</span><div class="chip-set">' +
+          a.tech.map(function (t) { return '<span class="tag">' + OD.esc(t) + '</span>'; }).join('') + '</div></div>' : '';
+    var skills = a.skills && a.skills.length
+      ? '<div class="spec-row"><span class="mini">能力</span><div class="chip-set">' +
+          a.skills.map(function (s) { return '<span class="sk-chip">' + OD.esc(s) + '</span>'; }).join('') + '</div></div>' : '';
+    var files = a.files && a.files.length
+      ? '<div class="spec-row"><span class="mini">附件</span><div class="chip-set">' +
+          a.files.map(function (f) { return '<span class="file-chip">' + ICO.file + OD.esc(f) + '</span>'; }).join('') + '</div></div>' : '';
+    var links = a.link
+      ? '<div class="spec-row"><span class="mini">連結</span><div class="chip-set">' + linkChip(a) + '</div></div>' : '';
+    return '<article class="card" style="margin-top:0" data-od-id="ach-' + a.id + '">' +
+      head +
+      '<div class="card-title" style="margin-top:9px">' + OD.esc(a.title) + '</div>' +
+      '<div class="card-sub">' + OD.esc(a.semester) + (cn ? ' · 對應課程：' + OD.esc(cn) : '') + '</div>' +
+      '<p class="ach-sum">' + OD.esc(a.summary || '尚未填寫摘要。') + '</p>' +
+      tech + skills + links + files +
+      '<div class="row-between" style="margin-top:13px;padding-top:12px;border-top:1px solid var(--border)">' +
+        '<span class="meta">' + (ev.length ? '已連結 ' + ev.length + ' 項能力證據' : '尚未連結能力') + '</span>' +
+        '<span class="row" style="gap:7px">' +
+          '<button class="btn btn-sm btn-secondary" data-action="ach-edit" data-id="' + a.id + '">' + ICO.edit + '編輯</button>' +
+          '<button class="btn btn-sm btn-ghost" data-action="ach-detail" data-id="' + a.id + '">查看</button>' +
+        '</span></div>' +
+    '</article>';
+  }
+
+  /* ── 右：類型分佈 / 能力標籤 ────────────────────────────── */
+  function typeCard() {
+    var total = db.achievements.length || 1;
+    var rows = db.achievementTypes.map(function (t) {
+      var n = countByType(t.value); if (!n) return '';
+      return '<div style="margin-bottom:11px"><div class="row-between" style="margin-bottom:5px">' +
+        '<span class="mini">' + OD.esc(t.label) + '</span><span class="meta num">' + n + ' 項 · ' + pct(n, total) + '%</span></div>' +
+        '<div class="bar"><i style="width:' + pct(n, total) + '%"></i></div></div>';
+    }).join('');
+    return card('類型分佈', '各類型占全部成果比例', rows || '<div class="meta">尚無資料</div>');
+  }
+  function skillCard() {
+    var map = {};
+    db.achievements.forEach(function (a) {
+      (a.skills || []).forEach(function (s) { map[s] = (map[s] || 0) + 1; });
+    });
+    var arr = Object.keys(map).sort(function (a, b) { return map[b] - map[a] || a.localeCompare(b); });
+    var chips = arr.map(function (s) {
+      return '<span class="sk-chip">' + OD.esc(s) + '<span class="c">×' + map[s] + '</span></span>';
+    }).join('');
+    var ev = db.skillEvidence.filter(function (e) { return e.source === 'achievement'; }).length;
+    var linked = {};
+    db.skillEvidence.filter(function (e) { return e.source === 'achievement'; })
+      .forEach(function (e) { linked[e.skillId] = true; });
+    var linkedN = Object.keys(linked).length;
+    var body = '<div class="chip-set">' + chips + '</div>' +
+      '<div class="avoid-note" style="margin-top:14px">' + ICO.star +
+        '共 ' + arr.length + ' 個能力標籤，其中 ' + linkedN + ' 項已建立正式能力證據。' +
+        '此清單由成果標籤自動彙整。</div>' +
+      '<a class="btn btn-secondary" href="diagnosis.html" style="width:100%;justify-content:center;margin-top:12px">前往能力診斷</a>';
+    return card('能力標籤聚合', '成果帶出的能力關鍵字', body);
+  }
+  function sideCol() { return '<div class="stack">' + typeCard() + skillCard() + '</div>'; }
+
+  /* ── 互動：篩選 ─────────────────────────────────────────── */
+  OD.on('type-filter', function (el) { st.type = el.getAttribute('data-v'); render(); });
+
+  /* ── 互動：成果細節 ─────────────────────────────────────── */
+  OD.on('ach-detail', function (el) {
+    var a = db.achievements.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!a) return;
+    var cn = courseName(a.courseId);
+    var body = '<div class="grid-2">' +
+        '<div class="kpi"><span class="k">類型</span><span class="v" style="font-size:17px">' + OD.esc(typeLabel(a.type)) + '</span></div>' +
+        '<div class="kpi"><span class="k">學期</span><span class="v" style="font-size:17px">' + OD.esc(a.semester) + '</span></div>' +
+        '<div class="kpi"><span class="k">日期</span><span class="v" style="font-size:17px">' + OD.esc(a.date) + '</span></div>' +
+        '<div class="kpi"><span class="k">成績</span><span class="v" style="font-size:17px">' + OD.esc(a.grade || '—') + '</span></div>' +
+      '</div>' +
+      '<p class="ach-sum" style="font-size:14px">' + OD.esc(a.summary || '尚未填寫摘要。') + '</p>' +
+      (a.tech && a.tech.length ? '<div class="spec-row"><span class="mini">技術</span><div class="chip-set">' +
+        a.tech.map(function (t) { return '<span class="tag">' + OD.esc(t) + '</span>'; }).join('') + '</div></div>' : '') +
+      (a.skills && a.skills.length ? '<div class="spec-row"><span class="mini">能力</span><div class="chip-set">' +
+        a.skills.map(function (s) { return '<span class="sk-chip">' + OD.esc(s) + '</span>'; }).join('') + '</div></div>' : '') +
+      (a.files && a.files.length ? '<div class="spec-row"><span class="mini">附件</span><div class="chip-set">' +
+        a.files.map(function (f) { return '<span class="file-chip">' + ICO.file + OD.esc(f) + '</span>'; }).join('') + '</div></div>' : '') +
+      (cn ? '<div class="lrow"><span class="mini">對應課程</span><b>' + OD.esc(cn) + '</b></div>' : '') +
+      (a.link ? '<div class="lrow"><span class="mini">' + OD.esc(a.linkLabel || '成果連結') + '</span>' + linkChip(a) + '</div>' : '') +
+      (a.repo ? '<div class="lrow"><span class="mini">程式碼</span><span class="meta num">' + OD.esc(a.repo) + '</span></div>' : '');
+    OD.modal({
+      title: OD.esc(a.title), sub: OD.esc(typeLabel(a.type)) + ' · ' + OD.esc(a.semester), body: body,
+      foot: '<button class="btn btn-secondary" data-action="modal-close">關閉</button>' +
+            '<button class="btn btn-primary" data-action="ach-edit" data-id="' + a.id + '">' + ICO.edit + '編輯</button>'
+    });
+  });
+
+  /* ── 互動：能力證據勾選 / 編輯成果 ─────────────────────── */
+  function skillPicks() {
+    return db.skills.map(function (s) {
+      var on = st.picked.indexOf(s.id) > -1;
+      return '<button type="button" class="pick' + (on ? ' on' : '') + '" data-action="pick-skill" data-id="' + s.id + '">' +
+        '<span class="box">' + ICO.check + '</span>' +
+        '<span class="grow"><b style="font-size:13.5px">' + OD.esc(s.name) + '</b>' +
+          '<div class="meta" style="margin-top:2px">目前能力分數 ' + s.score + ' · ' + OD.esc(s.note) + '</div></span></button>';
+    }).join('');
+  }
+  OD.on('pick-skill', function (el) {
+    var id = el.getAttribute('data-id'), i = st.picked.indexOf(id);
+    if (i > -1) st.picked.splice(i, 1); else st.picked.push(id);
+    el.classList.toggle('on');
+    var c = OD.$('#na-ev-count');
+    if (c) c.textContent = '已選 ' + st.picked.length + ' 項';
+  });
+
+  OD.on('ach-edit', function (el) {
+    var a = db.achievements.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!a) return;
+    st.editId = a.id;
+    st.picked = evidenceOf(a.id).map(function (e) { return e.skillId; });
+    st.draft = {
+      type: a.type, title: a.title, semester: a.semester, grade: a.grade || '',
+      date: a.date || OD.today, courseId: a.courseId || '', summary: a.summary || '',
+      tech: (a.tech || []).join(', '), skills: (a.skills || []).join(', '),
+      files: (a.files || []).slice(), linkLabel: a.linkLabel || '', link: a.link || ''
+    };
+    openNA();
+  });
+
+  /* ── 互動：新增成果 ─────────────────────────────────────── */
+  function initDraft() {
+    return { type: 'course', title: '', semester: db.currentSemester || db.semesterOrder[0],
+      grade: '', date: OD.today, courseId: '', summary: '', tech: '', skills: '', files: [],
+      linkLabel: '', link: '' };
+  }
+  function fileField() {
+    var files = (st.draft && st.draft.files) || [];
+    var chips = files.map(function (f, i) {
+      return '<span class="file-chip">' + ICO.file + OD.esc(f) +
+        '<button type="button" class="subj-del" data-action="na-file-del" data-i="' + i + '" aria-label="移除附件">×</button></span>';
+    }).join('');
+    return '<div class="stack-sm">' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' + (chips || '<span class="meta">尚未加入附件</span>') + '</div>' +
+      '<div class="row" style="gap:9px"><button type="button" class="btn btn-sm btn-secondary" data-action="na-file-add">' + ICO.plus + '加入檔案</button>' +
+      '<span class="meta">模擬上傳，支援 PDF、JPG、PNG、PPTX</span></div></div>';
+  }
+  OD.on('add-achievement', function () { st.editId = null; st.picked = []; st.draft = st.draft || initDraft(); openNA(); });
+
+  function field(label, inner, span) { return '<div class="field' + (span ? ' ' + span : '') + '">' + label + inner + '</div>'; }
+  function openNA() {
+    var d = st.draft;
+    var editing = !!st.editId;
+    var opts = function (arr, sel) {
+      return arr.map(function (v) { return '<option' + (v === sel ? ' selected' : '') + '>' + OD.esc(v) + '</option>'; }).join('');
+    };
+    var typeSel = db.achievementTypes.map(function (t) {
+      return '<option value="' + t.value + '"' + (t.value === d.type ? ' selected' : '') + '>' + OD.esc(t.label) + '</option>';
+    }).join('');
+    var semCourses = db.courses.filter(function (c) { return c.semester === d.semester; });
+    var courseField = d.type === 'course'
+      ? field('<label>對應課程（' + OD.esc(d.semester) + '）</label>',
+          semCourses.length
+            ? '<select class="select" id="na-courseId" data-change="na-sync"><option value="">— 不指定 —</option>' +
+                semCourses.map(function (c) {
+                  return '<option value="' + c.id + '"' + (c.id === d.courseId ? ' selected' : '') + '>' +
+                    OD.esc(c.name) + '（' + (c.grade ? OD.esc(c.grade) : '修課中') + '）</option>';
+                }).join('') + '</select>'
+            : '<div class="meta" style="padding:9px 2px">此學期尚無修課紀錄，請先至「修課與畢業」新增。</div>', 'span-2')
+      : '';
+    var evidenceSection = editing
+      ? '<div class="section-title" style="margin-top:20px">能力證據 <span id="na-ev-count" class="meta" style="font-weight:400">已選 ' + st.picked.length + ' 項</span></div>' +
+        '<div class="avoid-note">' + ICO.link + '勾選此成果要證明的能力，儲存後會並列於「能力診斷」。</div>' +
+        '<div class="opt-list" style="margin-top:10px">' + skillPicks() + '</div>'
+      : '';
+    var body = '<div class="form-grid">' +
+      field('<label>成果類型</label>', '<select class="select" id="na-type" data-change="na-type">' + typeSel + '</select>') +
+      field('<label>成果名稱</label>', '<input class="input" id="na-title" data-input="na-sync" placeholder="例如：資料庫系統專題" value="' + OD.esc(d.title) + '">') +
+      field('<label>學期</label>', '<select class="select" id="na-semester" data-change="na-semester">' + opts(db.semesterOrder, d.semester) + '</select>') +
+      field('<label>成績／名次（選填）</label>', '<input class="input" id="na-grade" data-input="na-sync" placeholder="例如：90 或 佳作" value="' + OD.esc(d.grade) + '">') +
+      field('<label>成果日期</label>', '<input class="input" type="date" id="na-date" data-input="na-sync" value="' + OD.esc(d.date) + '">') +
+      courseField +
+      '<div class="field span-2"><div class="row-between"><label>成果摘要</label>' +
+        '<button type="button" class="btn btn-sm btn-ghost" data-action="mic" data-target="#na-summary">' + ICO.mic + '語音輸入</button></div>' +
+        '<textarea class="textarea" id="na-summary" rows="3" data-input="na-sync" placeholder="簡述成果內容、你的貢獻與收穫…">' + OD.esc(d.summary) + '</textarea></div>' +
+      field('<label>技術標籤（以逗號分隔）</label>', '<input class="input" id="na-tech" data-input="na-sync" placeholder="SQL, MySQL" value="' + OD.esc(d.tech) + '">') +
+      field('<label>能力標籤（以逗號分隔）</label>', '<input class="input" id="na-skills" data-input="na-sync" placeholder="資料庫, 專案實作" value="' + OD.esc(d.skills) + '">') +
+      '<div class="field span-2"><label>成果連結（選填）</label><div class="row" style="gap:9px;flex-wrap:wrap">' +
+        '<input class="input" id="na-linkLabel" data-input="na-sync" placeholder="名稱，例如 GitHub、YouTube、雲端硬碟" value="' + OD.esc(d.linkLabel) + '" style="flex:1 1 220px">' +
+        '<input class="input" id="na-link" data-input="na-sync" placeholder="連結網址，例如 https://…" value="' + OD.esc(d.link) + '" style="flex:2 1 280px">' +
+      '</div><div class="meta" style="margin-top:7px">可填寫 GitHub、YouTube 或雲端硬碟等成果連結。</div></div>' +
+      field('<label>附件</label>', fileField(), 'span-2') +
+    '</div>' + evidenceSection +
+    '<div class="meta" style="margin-top:12px">此為 Prototype，輸入內容僅儲存在瀏覽器本機（localStorage）。</div>';
+    OD.modal({
+      title: editing ? '編輯成果' : '新增成果',
+      sub: editing ? '修改內容，並可調整對應能力證據' : '記錄一項成果，儲存後可於編輯連結能力', wide: true, body: body,
+      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+            '<button class="btn btn-primary" data-action="na-save">' + (editing ? '儲存變更' : '建立成果') + '</button>'
+    });
+  }
+  function syncDraft() {
+    ['type', 'title', 'semester', 'grade', 'date', 'courseId', 'summary', 'tech', 'skills', 'linkLabel', 'link'].forEach(function (k) {
+      var el = OD.$('#na-' + k); if (el) st.draft[k] = el.value;
+    });
+  }
+  OD.on('na-sync', function () { syncDraft(); });
+  OD.on('na-type', function () { syncDraft(); openNA(); });
+  OD.on('na-semester', function () {
+    syncDraft();
+    var ok = db.courses.some(function (c) { return c.id === st.draft.courseId && c.semester === st.draft.semester; });
+    if (!ok) st.draft.courseId = '';
+    openNA();
+  });
+  OD.on('na-file-add', function () {
+    syncDraft();
+    st.draft.files = st.draft.files || [];
+    var base = (st.draft.title || '成果').trim() || '成果';
+    var pool = ['作品截圖.png', '專題報告.pdf', '成果簡報.pptx', '證書.jpg'];
+    st.draft.files.push(base + '_' + pool[st.draft.files.length % pool.length]);
+    openNA();
+    OD.toast('已加入附件（模擬，不會實際上傳）');
+  });
+  OD.on('na-file-del', function (el) {
+    syncDraft();
+    st.draft.files.splice(+el.getAttribute('data-i'), 1);
+    openNA();
+  });
+  function buildFields(d) {
+    return {
+      type: d.type, title: d.title.trim(),
+      courseId: d.type === 'course' ? (d.courseId || '') : '',
+      semester: d.semester, grade: d.grade.trim(), summary: d.summary.trim(),
+      tech: splitList(d.tech), skills: splitList(d.skills), files: (d.files || []).slice(),
+      link: d.link.trim(), linkLabel: d.linkLabel.trim(), date: d.date || OD.today
+    };
+  }
+  function syncEvidence(id, title, type) {
+    db.skillEvidence = db.skillEvidence.filter(function (e) { return !(e.source === 'achievement' && e.sourceId === id); });
+    var a = db.achievements.filter(function (x) { return x.id === id; })[0];
+    st.picked.forEach(function (sid) {
+      db.skillEvidence.push({
+        id: OD.uid('e'), skillId: sid, source: 'achievement', sourceId: id,
+        label: title, detail: '成果 · ' + typeLabel(type),
+        note: (a && a.summary ? a.summary.slice(0, 28) : '')
+      });
+    });
+  }
+  OD.on('na-save', function () {
+    syncDraft();
+    var d = st.draft;
+    if (!d.title.trim()) { OD.toast('請輸入成果名稱'); return; }
+    var f = buildFields(d);
+    if (st.editId) {
+      var a = db.achievements.filter(function (x) { return x.id === st.editId; })[0];
+      if (!a) return;
+      Object.keys(f).forEach(function (k) { a[k] = f[k]; });
+      syncEvidence(a.id, a.title, a.type);
+      OD.save(); OD.closeModal(); st.editId = null; st.draft = null; st.picked = [];
+      render(); OD.toast('已更新成果：' + a.title);
+    } else {
+      var na = { id: OD.uid('a'), repo: '' };
+      Object.keys(f).forEach(function (k) { na[k] = f[k]; });
+      db.achievements.unshift(na);
+      if (st.picked.length) syncEvidence(na.id, na.title, na.type);
+      OD.save(); OD.closeModal(); st.draft = null; st.picked = [];
+      render(); OD.toast('已新增成果：' + na.title);
+    }
+  });
+
+  /* ── 語音輸入：填入摘要後重新開啟表單 ───────────────────── */
+  OD.listen('voiceFilled', function (p) {
+    if (!OD.$('[data-action="na-save"]')) return;
+    st.draft.summary = (st.draft.summary ? st.draft.summary + '\n' : '') + p.text;
+    openNA();
+    OD.toast('已將語音內容放入摘要');
+  });
+
+  /* ── 跨頁來源：由修課紀錄建立課程成果 ───────────────────── */
+  (function prefill() {
+    try {
+      var from = new URLSearchParams(location.search).get('fromCourse');
+      var cid = localStorage.getItem('shiji:prefillCourse');
+      if (!from || !cid) return;
+      localStorage.removeItem('shiji:prefillCourse');
+      var c = OD.course(cid); if (!c) return;
+      st.editId = null; st.picked = [];
+      st.draft = initDraft();
+      st.draft.type = 'course'; st.draft.courseId = c.id;
+      st.draft.title = c.name; st.draft.semester = c.semester;
+      openNA();
+      OD.toast('已從修課紀錄帶入「' + c.name + '」');
+    } catch (e) {}
+  })();
+
+  render();
+})();
+</script>
+</body>
+</html>

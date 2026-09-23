@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>年度回顧 · 學習生涯工作台</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .stack > .card, .grid-2 > .card, .grid-3 > .card{ margin-top: 0; }
+
+  .w-hero{ padding: 46px 40px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+  .w-eyebrow{ font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; color: var(--muted); }
+  .w-title{ font-size: 40px; font-weight: 700; letter-spacing: -.02em; margin: 12px 0 0; line-height: 1.15; }
+  .w-title .accent{ color: var(--accent); }
+  .w-sub{ margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 52ch; }
+
+  .w-panel{ padding: 34px 36px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+  .w-label{ font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+  .w-big{ font-size: 60px; font-weight: 700; letter-spacing: -.03em; line-height: 1; margin-top: 14px; }
+  .w-big small{ font-size: 20px; font-weight: 600; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+  .w-note{ margin-top: 12px; font-size: 14px; color: color-mix(in oklch, var(--fg) 78%, var(--muted)); line-height: 1.7; }
+
+  .w-months{ display: flex; align-items: flex-end; gap: 8px; height: 150px; margin-top: 22px; }
+  .w-month{ flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%; }
+  .w-month i{ display: block; width: 100%; max-width: 30px; border-radius: 5px 5px 3px 3px; background: var(--fg-soft); }
+  .w-month b{ font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); font-weight: 500; }
+  .w-month.peak i{ background: var(--accent); }
+  .w-month.peak b{ color: var(--accent); font-weight: 600; }
+
+  .w-stat{ display: flex; align-items: baseline; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--border); }
+  .w-stat:last-child{ border-bottom: 0; }
+  .w-stat .v{ font-size: 26px; font-weight: 650; letter-spacing: -.02em; }
+  .w-stat .k{ font-size: 13.5px; color: var(--muted); }
+
+  .w-quote{ padding: 30px 34px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+  .w-quote .q{ font-size: 22px; line-height: 1.55; letter-spacing: -.01em; }
+  .w-quote .meta{ margin-top: 14px; }
+
+  .w-cta{ display: flex; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body data-page="recap">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="appbar" id="appbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<div class="toast-root" id="toastRoot"></div>
+<div id="modalRoot"></div>
+<div id="voiceRoot"></div>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var db = OD.db;
+  var Y = db.yearlyStats;
+  var ICO = {
+    share: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M5 14v5h14v-5"/></svg>',
+    arrow: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>'
+  };
+  function esc(s) { return OD.esc(s); }
+  var MONTH = ['1 月', '2 月', '3 月', '4 月', '5 月', '6 月', '7 月', '8 月', '9 月', '10 月', '11 月', '12 月'];
+
+  OD.appbar({
+    title: '年度回顧',
+    sub: Y.year + ' 年 · 你的學習歷程總整理',
+    actions: '<button class="btn btn-secondary" data-action="recap-share">' + ICO.share + '匯出回顧卡片</button>'
+  });
+
+  function months() {
+    var max = Math.max.apply(null, Y.monthly);
+    var peak = Y.monthly.indexOf(max);
+    return '<div class="w-months">' + Y.monthly.map(function (v, i) {
+      var h = Math.max(6, Math.round(v / max * 100));
+      return '<div class="w-month' + (i === peak ? ' peak' : '') + '"><i style="height:' + h + '%"></i><b>' + (i + 1) + '</b></div>';
+    }).join('') + '</div>' +
+    '<div class="meta" style="margin-top:10px">' + MONTH[peak] + '是你最投入的月份，共完成 ' + max + ' 項學習任務。</div>';
+  }
+
+  function breakdown() {
+    var max = Math.max.apply(null, Y.breakdown.map(function (b) { return b.value; }));
+    return Y.breakdown.map(function (b) {
+      return '<div class="w-stat"><span class="k">' + esc(b.label) + '</span>' +
+        '<span class="row" style="gap:12px"><span class="mini-bar" style="width:150px"><span class="bar"><i style="width:' + Math.round(b.value / max * 100) + '%"></i></span></span>' +
+        '<span class="v num">' + b.value + '</span></span></div>';
+    }).join('');
+  }
+
+  function content() {
+    var s = db.student;
+    var topSubject = OD.subjectName(Y.topSubjectId);
+    return '<div class="stack" style="gap:16px">' +
+
+      /* Hero */
+      '<section class="w-hero" data-od-id="recap-hero">' +
+        '<div class="w-eyebrow">LEARNING WORKSPACE · YEAR IN REVIEW</div>' +
+        '<h1 class="w-title">' + s.name + '的<br><span class="accent">' + Y.year + '</span> 學習回顧</h1>' +
+        '<p class="w-sub">這一年，你把零碎的讀書時間累積成可被看見的成果：' + Y.tasksDone + ' 項任務、' + Y.goalsDone +
+        ' 個學習目標，以及 ' + Y.achievementsCount + ' 項成果紀錄。</p>' +
+      '</section>' +
+
+      '<div class="grid-2" style="gap:16px">' +
+        /* 學習投入 */
+        '<section class="w-panel" data-od-id="recap-investment">' +
+          '<div class="w-label">學習投入</div>' +
+          '<div class="w-big num">' + Y.tasksDone + '<small>項任務完成</small></div>' +
+          '<div class="w-note">平均每週約 ' + Math.round(Y.tasksDone / 52) + ' 項，累積的節奏比單次衝刺更穩定。</div>' +
+          months() +
+        '</section>' +
+        /* 年度分佈 */
+        '<section class="w-panel" data-od-id="recap-breakdown">' +
+          '<div class="w-label">年度累積</div>' +
+          '<div class="w-note" style="margin-top:14px;margin-bottom:6px">把課堂、成果與目標放在一起看，就看得出你這一年的重心。</div>' +
+          breakdown() +
+        '</section>' +
+      '</div>' +
+
+      /* 學習目標 */
+      '<section class="w-quote" data-od-id="recap-topgoal">' +
+        '<div class="w-label">學習目標</div>' +
+        '<p class="q" style="margin:14px 0 0">這一年你完成了 <b class="num">' + Y.goalsDone + '</b> 個學習目標，其中最有代表性的是「' + esc(Y.topGoalTitle) + '」。' +
+        '</p>' +
+        '<div class="row-between" style="margin-top:18px">' +
+          '<span class="meta">' + esc(Y.topGoalProgress) + '</span>' +
+          '<span class="pill pill-ok">已達成</span>' +
+        '</div>' +
+        '<div class="bar bar-lg" style="margin-top:12px"><i style="width:100%"></i></div>' +
+      '</section>' +
+
+      /* 修課 / 成果 / 能力 */
+      '<div class="grid-3" style="gap:16px">' +
+        '<section class="w-panel" data-od-id="recap-courses">' +
+          '<div class="w-label">修課與畢業</div>' +
+          '<div class="w-big num">' + Y.coursesCount + '<small>門課</small></div>' +
+          '<div class="w-note">投入最多的是「' + esc(topSubject) + '」，也成為你能力輪廓中最穩定的一塊。</div>' +
+        '</section>' +
+        '<section class="w-panel" data-od-id="recap-achievements">' +
+          '<div class="w-label">學習歷程</div>' +
+          '<div class="w-big num">' + Y.achievementsCount + '<small>項成果</small></div>' +
+          '<div class="w-note">' + Y.projects + ' 個專題、' + Y.contests + ' 場競賽、' + Y.interns + ' 段實習，讓學習有了可以展示的樣子。</div>' +
+        '</section>' +
+        '<section class="w-panel" data-od-id="recap-newskills">' +
+          '<div class="w-label">新長出的能力</div>' +
+          '<div class="chip-set" style="margin-top:16px">' +
+            Y.newSkills.map(function (n) { return '<span class="tag tag-plain">' + esc(n) + '</span>'; }).join('') +
+          '</div>' +
+          '<div class="w-note">這些能力都是從修課與成果中慢慢累積出來的。</div>' +
+        '</section>' +
+      '</div>' +
+
+      /* 收尾 CTA */
+      '<section class="w-quote" data-od-id="recap-next">' +
+        '<div class="w-label">下一步</div>' +
+        '<p class="q" style="margin:14px 0 0">回顧完這一年，' + Y.year + ' 年的你已經站在更好的位置。' +
+        '接著可以看看能力還缺什麼，或直接回到首頁安排下一週。</p>' +
+        '<div class="w-cta" style="margin-top:22px">' +
+          '<a class="btn btn-primary" href="explore.html">' + esc('探索職涯方向') + ICO.arrow + '</a>' +
+          '<a class="btn btn-secondary" href="index.html">回到首頁安排任務</a>' +
+        '</div>' +
+      '</section>' +
+
+    '</div>';
+  }
+
+  OD.on('recap-share', function () { OD.toast('已準備年度回顧卡片；正式版將匯出圖片'); });
+
+  OD.$('#content').innerHTML = content();
+})();
+</script>
+</body>
+</html>
