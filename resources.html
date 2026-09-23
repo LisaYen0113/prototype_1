@@ -12,13 +12,40 @@
   .have-chip{ display: inline-flex; padding: 3px 9px; border-radius: 999px; background: var(--ok-soft); color: color-mix(in oklch, var(--ok) 62%, var(--fg)); font-size: 12px; }
   .res-row{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
   .res-row:last-child{ border-bottom: 0; }
-  .dir-card.is-focus{ border-color: color-mix(in oklch, var(--accent) 50%, var(--border)); }
+  /* 名稱那一塊本身就是「看詳情」的按鈕（名稱、類型、單位都在裡面），點哪裡都開得起來。
+     動作鈕放在外面的 .res-acts，所以按鈕不會巢狀按鈕。 */
+  /* 直的 flex 疊行：撐到 44px 高度時文字才會置中 */
+  .res-info{ display: flex; flex-direction: column; justify-content: center; flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+  .res-info:hover > b{ color: color-mix(in oklch, var(--accent) 70%, var(--fg)); text-decoration: underline; text-underline-offset: 3px; }
+  .res-info:focus-visible{ outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  .res-acts{ display: flex; align-items: center; gap: 6px; flex: none; }
+  /* 手機上兩顆鈕跟標題擠在同一行會把資源名稱壓成一團，讓按鈕換到下一行靠右 */
+  @media (max-width: 620px){
+    .res-row{ flex-wrap: wrap; row-gap: 9px; }
+    .res-info{ flex: 1 1 100%; }
+    .res-acts{ margin-left: auto; }
+  }
+  .scope-bar{ display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; padding: 11px 13px; border-radius: var(--radius); background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-size: 13px; line-height: 1.6; }
+  /* 少了尺寸，SVG 會用預設的 300×150 撐開，整條提示就變成一大塊空白 */
+  .scope-bar .ico{ width: 16px; height: 16px; flex: none; }
+  .scope-bar .btn{ margin-left: auto; }
   .filter-row{ display: flex; flex-wrap: wrap; gap: 8px; }
   .filter-chip{ display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; }
   .filter-chip:hover{ border-color: color-mix(in oklch, var(--fg) 30%, transparent); color: var(--fg); }
   .filter-chip.is-active{ border-color: color-mix(in oklch, var(--accent) 42%, var(--border)); background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; }
   .filter-chip .n{ font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
   .filter-chip.is-active .n{ color: color-mix(in oklch, var(--accent) 60%, var(--fg)); }
+  .field-chip{ display: inline-flex; padding: 2px 8px; margin-right: 7px; border-radius: 999px; background: var(--fg-soft); color: color-mix(in oklch, var(--fg) 72%, var(--muted)); font-size: 11.5px; }
+  /* 探索區的兩排篩選：標籤與 chips 併排，標籤要對齊第一排 chip 的文字 */
+  .browse-filter{ display: flex; align-items: flex-start; gap: 9px; margin-bottom: 10px; }
+  .browse-filter > .mini{ flex: none; padding-top: 10px; }
+  .browse-filter .filter-row{ flex: 1 1 auto; }
+  /* 標題右邊那一組：說明用的 pill 與「跳去探索區」的鈕同一排，
+     窄螢幕時整組換行，不會把標題擠成兩行 */
+  .head-acts{ display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .head-acts .btn .n{ font-family: var(--font-mono); font-size: 11px; opacity: .7; margin-left: 1px; }
+  /* 跳過去的時候別讓 sticky 的 appbar 蓋住卡片標題 */
+  #content section[data-od-id=browse]{ scroll-margin-top: 88px; }
   .btn-added{ background: var(--ok-soft); border-color: color-mix(in oklch, var(--ok) 32%, var(--border)); color: color-mix(in oklch, var(--ok) 62%, var(--fg)); }
   .btn-added:hover{ background: color-mix(in oklch, var(--ok) 22%, var(--surface)); }
   .toggle-row{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border); }
@@ -28,7 +55,12 @@
   .detail-row{ display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .detail-row .k{ font-size: 12px; color: var(--muted); }
   .detail-row .v{ font-size: 13.5px; font-weight: 550; }
-  @media (max-width: 920px){ .detail-grid{ grid-template-columns: 1fr; } }
+  @media (max-width: 920px){
+    .detail-grid{ grid-template-columns: 1fr; }
+    .filter-chip{ min-height: 44px; padding: 8px 14px; }
+    /* 資訊塊是主要點擊目標，跟著 .btn-sm 一起長到 44px */
+    .res-info{ min-height: 44px; }
+  }
 </style>
 </head>
 <body data-page="resource">
@@ -54,10 +86,21 @@
     check: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
     edit: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
     trash: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/></svg>',
-    compass: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5.5-5.5 2 2-5.5z"/></svg>'
+    compass: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5.5-5.5 2 2-5.5z"/></svg>',
+    down: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13"/><path d="m6 12.5 6 6 6-6"/></svg>',
+    up: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6"/><path d="m6 11.5 6-6 6 6"/></svg>'
   };
   var RES_LABEL = { course: '課程', activity: '活動', contest: '競賽', workshop: '工作坊', online: '線上課程' };
   var RES_ORDER = ['course', 'activity', 'contest', 'workshop', 'online'];
+  /* 資源進到系統不只一條路：課程是「去修這門課」，進修課紀錄；
+     其他四類是「排一件該做的事」，進任務清單，各自的任務類型不一樣。
+     長期要追蹤的才另外設成學習目標。 */
+  var RES_ACTION = {
+    activity: { verb: '準備參加', kind: '準備' },
+    contest:  { verb: '報名',     kind: '申請' },
+    workshop: { verb: '報名',     kind: '申請' },
+    online:   { verb: '完成',     kind: '理解' }
+  };
   var PRIO = [
     { value: 'high',   label: '高', cls: 'pill-warn' },
     { value: 'medium', label: '中', cls: 'pill' },
@@ -75,15 +118,20 @@
 
   var focus = ''; try { focus = new URLSearchParams(location.search).get('dir') || ''; } catch (e) {}
   var filterType = 'all';
+  var browseType = 'all';
+  var browseField = 'all';
   function dirById(id) { return db.careerDirections.filter(function (d) { return d.id === id; })[0]; }
+  /* 從職涯探索點進來會帶 ?dir=，這時候只看那個方向的資源 */
+  function focusDir() { return focus ? dirById(focus) : null; }
+  function scope() { return focusDir() ? [focusDir()] : db.careerDirections; }
   function resTotal() {
     var n = 0;
-    db.careerDirections.forEach(function (d) { Object.keys(d.resources).forEach(function (k) { n += d.resources[k].length; }); });
+    scope().forEach(function (d) { Object.keys(d.resources).forEach(function (k) { n += d.resources[k].length; }); });
     return n;
   }
   function typeCount(t) {
     var n = 0;
-    db.careerDirections.forEach(function (d) { (d.resources[t] || []).forEach(function () { n++; }); });
+    scope().forEach(function (d) { (d.resources[t] || []).forEach(function () { n++; }); });
     return n;
   }
   function addDays(iso, n) { var d = OD.parseISO(iso); d.setDate(d.getDate() + n); return OD.iso(d); }
@@ -92,20 +140,29 @@
   function prioOf(v) { return PRIO.filter(function (p) { return p.value === v; })[0] || PRIO[1]; }
 
   function goalByResource(rid) { return db.goals.filter(function (g) { return g.sourceResourceId === rid; })[0]; }
+  /* 教務處匯進來的同名課程：還沒按「加入修課」之前就看得到它真實的學期與學分 */
+  function sameCourse(r) { return db.courses.filter(function (c) { return String(c.name).trim() === String(r.name).trim(); })[0]; }
+  function courseByResource(rid) { return db.courses.filter(function (c) { return c.sourceResourceId === rid; })[0]; }
+  function taskByResource(rid) { return db.tasks.filter(function (t) { return t.sourceResourceId === rid; })[0]; }
+  function catName(id) { var c = db.categories.filter(function (x) { return x.id === id; })[0]; return c ? c.name : id; }
+  /* 資源的 meta 寫「下學期 · 3 學分」這種字串，學分數與學期都從裡面讀 */
+  function creditsOf(meta) { var m = /(\d+)\s*學分/.exec(String(meta || '')); return m ? +m[1] : 2; }
+  function semesterOf(meta) {
+    var order = db.semesterOrder || [], i = order.indexOf(db.currentSemester);
+    if (/下學期/.test(String(meta || ''))) return order[i + 1] || db.currentSemester;
+    return db.currentSemester;
+  }
   function goalTasks(id) {
     return db.tasks.filter(function (t) { return t.goalId === id; })
       .sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
   }
 
-  OD.appbar({
-    title: '學習資源',
-    sub: '依職涯方向整理的 ' + resTotal() + ' 項學習資源 · 可依類型篩選'
-  });
-
   function render() {
-    var dirs = db.careerDirections.slice().sort(function (a, b) {
-      if (focus) return (b.id === focus ? 1 : 0) - (a.id === focus ? 1 : 0);
-      return b.overlap - a.overlap;
+    var fd = focusDir();
+    var dirs = fd ? [fd] : db.careerDirections.slice().sort(function (a, b) { return b.overlap - a.overlap; });
+    OD.appbar({
+      title: '學習資源',
+      sub: (fd ? '《' + fd.name + '》推薦的 ' : '推薦 ') + resTotal() + ' 項 · 探索 ' + (db.opportunities || []).length + ' 項機會'
     });
     var chips = [['all', '全部', resTotal()]].concat(RES_ORDER.map(function (t) {
       return [t, RES_LABEL[t], typeCount(t)];
@@ -115,17 +172,57 @@
     }).join('');
 
     var sections = dirs.map(dirSection).filter(Boolean).join('');
+    /* 只看到一個方向時要說清楚為什麼，並留一條回全部方向的路 */
+    var scopeBar = fd
+      ? '<div class="scope-bar">' + ICO.compass + '<span>推薦清單只列出《' + OD.esc(fd.name) + '》對應的學習資源，下方探索區不受方向限制。</span>' +
+        '<button class="btn btn-sm btn-secondary" data-action="res-all">看全部方向</button></div>'
+      : '';
 
     OD.$('#content').innerHTML =
       '<div style="margin-bottom:16px">' + OD.flowStrip('resource') + '</div>' +
-      '<div class="avoid-note" style="margin-bottom:16px">' + ICO.link + '把能力缺口對應的資源加入「學習目標」；目標會建立在首頁，並可依類型自動拆解成每週與每日任務。</div>' +
+      '<div class="avoid-note" style="margin-bottom:16px">' + ICO.link + '課程按「加入修課」進修課紀錄，活動、競賽、工作坊與線上課程按「加入任務」排進清單；要長期追蹤的再按「設為目標」。</div>' +
+      scopeBar +
       '<div class="card-head" style="margin-bottom:14px"><div>' +
         '<div class="card-title" style="font-size:17px">學習資源清單</div>' +
-        '<div class="card-sub">依職涯方向分類，點「加入目標」可建立對應的學習目標與任務</div></div>' +
-        '<span class="pill pill-muted">依能力缺口推薦</span></div>' +
+        '<div class="card-sub">' + (fd
+          ? '只列出《' + OD.esc(fd.name) + '》方向對應的資源，課程可加入修課紀錄，其餘可加入任務清單'
+          : '依職涯方向分類推薦，課程可加入修課紀錄，其餘四類可加入任務清單') + '</div></div>' +
+        /* 推薦清單會隨著方向愈長；探索區在整頁最下面，給一顆直接跳下去的鈕，
+           不然手機要滑很久才找得到那些「沒有對到缺口」的機會 */
+        '<span class="head-acts">' +
+        '<span class="pill pill-muted">依能力缺口推薦</span>' +
+        '<button class="btn btn-sm btn-secondary" data-action="goto-browse">' + ICO.down + '探索更多機會' +
+        '<span class="n">' + (db.opportunities || []).length + '</span></button></span></div>' +
       '<div class="filter-row" style="margin-bottom:16px">' + chips + '</div>' +
       (sections || '<div class="empty" style="padding:28px 0">此類型目前沒有對應的學習資源。</div>') +
+      browseSection() +
       '<div class="meta" style="margin-top:16px">' + OD.esc(db.aiDisclaimer) + '</div>';
+  }
+
+  /* 每一列右邊兩顆：主要動作看類型（修課／任務），「設為目標」是長期追蹤才用的次要路 */
+  function goalBtn(jg, dirId, rid) {
+    return jg
+      ? '<button class="btn btn-sm btn-ghost" data-action="goal-detail" data-id="' + jg.id + '">' + ICO.check + '已設目標</button>'
+      : '<button class="btn btn-sm btn-ghost" data-action="res-goal" data-dir="' + dirId + '" data-r="' + rid + '">設為目標</button>';
+  }
+  function actBtn(kind, dirId, rid) {
+    if (kind === 'course') {
+      var c = courseByResource(rid);
+      return c
+        ? '<button class="btn btn-sm btn-added" data-action="res-open" data-k="course" data-id="' + c.id + '">' + ICO.check + '已加入修課</button>'
+        : '<button class="btn btn-sm btn-secondary" data-action="res-join" data-dir="' + dirId + '" data-r="' + rid + '">' + ICO.plus + '加入修課</button>';
+    }
+    var t = taskByResource(rid);
+    return t
+      ? '<button class="btn btn-sm btn-added" data-action="res-open" data-k="task" data-id="' + t.id + '">' + ICO.check + '已加入任務</button>'
+      : '<button class="btn btn-sm btn-secondary" data-action="res-task" data-dir="' + dirId + '" data-r="' + rid + '">' + ICO.plus + '加入任務</button>';
+  }
+
+  /* 一列的資訊塊就是「打開詳情」的按鈕。用 button 而不是 div，鍵盤與讀屏才會把它
+     當成可操作的東西；內容是行內元素，因為 button 不接受 div。 */
+  function resInfo(r, dirId, inner) {
+    return '<button class="res-info" data-action="res-detail" data-dir="' + OD.esc(dirId) + '" data-r="' + OD.esc(r.id) + '">' +
+      '<b style="font-size:13.5px">' + OD.esc(r.name) + '</b>' + inner + '</button>';
   }
 
   function dirSection(d) {
@@ -133,12 +230,9 @@
       var list = d.resources[t] || [];
       if (!list.length) return '';
       var rows = list.map(function (r) {
-        var jg = goalByResource(r.id);
-        var btn = jg
-          ? '<button class="btn btn-sm btn-added" data-action="goal-detail" data-id="' + jg.id + '">' + ICO.check + '已加入</button>'
-          : '<button class="btn btn-sm btn-secondary" data-action="res-goal" data-dir="' + d.id + '" data-r="' + r.id + '">' + ICO.plus + '加入目標</button>';
-        return '<div class="res-row"><span><b style="font-size:13.5px">' + OD.esc(r.name) + '</b>' +
-          '<div class="meta" style="margin-top:2px">' + OD.esc(RES_LABEL[t] || t) + ' · ' + OD.esc(r.provider) + ' · ' + OD.esc(r.meta) + '</div></span>' + btn + '</div>';
+        return '<div class="res-row">' +
+          resInfo(r, d.id, '<span class="meta" style="margin-top:2px">' + OD.esc(RES_LABEL[t] || t) + ' · ' + OD.esc(r.provider) + ' · ' + OD.esc(r.meta) + '</span>') +
+          '<span class="res-acts">' + goalBtn(goalByResource(r.id), d.id, r.id) + actBtn(t, d.id, r.id) + '</span></div>';
       }).join('');
       return '<div style="margin-bottom:16px"><div class="section-title">' + OD.esc(RES_LABEL[t] || t) + '</div>' +
         '<div class="stack-sm">' + rows + '</div></div>';
@@ -148,7 +242,7 @@
     RES_ORDER.forEach(function (t) {
       if (filterType === 'all' || filterType === t) n += (d.resources[t] || []).length;
     });
-    return '<section class="card dir-card' + (d.id === focus ? ' is-focus' : '') + '" data-od-id="dir-' + d.id + '">' +
+    return '<section class="card dir-card" data-od-id="dir-' + d.id + '">' +
       '<div class="card-head"><div>' +
         '<div class="card-title">' + OD.esc(d.name) + '</div>' +
         '<div class="card-sub">' + OD.esc(d.en) + '</div></div>' +
@@ -161,19 +255,87 @@
     '</section>';
   }
 
+  /* 推薦之外的機會：不掛在任何職涯方向底下，所以改用「領域」當逛的維度。
+     動作跟推薦區一模一樣——加了就進修課紀錄或任務清單，不是只能看。 */
+  function browseSection() {
+    var all = db.opportunities || [];
+    if (!all.length) return '';
+    var fields = [];
+    all.forEach(function (o) { if (fields.indexOf(o.field) < 0) fields.push(o.field); });
+    var list = all.filter(function (o) {
+      return (browseType === 'all' || o.type === browseType) &&
+             (browseField === 'all' || o.field === browseField);
+    });
+    var chip = function (action, key, label, on, n) {
+      return '<button class="filter-chip' + (on ? ' is-active' : '') + '" data-action="' + action + '" data-k="' + OD.esc(key) + '">' +
+        OD.esc(label) + (n == null ? '' : ' <span class="n">' + n + '</span>') + '</button>';
+    };
+    var typeChips = chip('browse-type', 'all', '全部', browseType === 'all', all.length) +
+      RES_ORDER.map(function (t) {
+        var n = all.filter(function (o) { return o.type === t; }).length;
+        return n ? chip('browse-type', t, RES_LABEL[t] || t, browseType === t, n) : '';
+      }).join('');
+    var fieldChips = chip('browse-field', 'all', '全部', browseField === 'all', null) +
+      fields.map(function (f) {
+        return chip('browse-field', f, f, browseField === f, all.filter(function (o) { return o.field === f; }).length);
+      }).join('');
+    var groups = RES_ORDER.filter(function (t) { return browseType === 'all' || browseType === t; })
+      .map(function (t) {
+        var items = list.filter(function (o) { return o.type === t; });
+        if (!items.length) return '';
+        var rows = items.map(function (o) {
+          return '<div class="res-row">' +
+            resInfo(o, '', '<span class="meta" style="margin-top:2px"><span class="field-chip">' + OD.esc(o.field) + '</span>' +
+              OD.esc(o.provider) + ' · ' + OD.esc(o.meta) + '</span>' +
+              (o.note ? '<span class="meta" style="margin-top:2px">' + OD.esc(o.note) + '</span>' : '')) +
+            '<span class="res-acts">' + goalBtn(goalByResource(o.id), '', o.id) + actBtn(o.type, '', o.id) + '</span></div>';
+        }).join('');
+        return '<div style="margin-bottom:16px"><div class="section-title">' + OD.esc(RES_LABEL[t] || t) + '</div>' +
+          '<div class="stack-sm">' + rows + '</div></div>';
+      }).join('');
+    return '<section class="card dir-card" data-od-id="browse">' +
+      '<div class="card-head"><div>' +
+        '<div class="card-title">探索更多機會</div>' +
+        '<div class="card-sub">不在推薦清單裡——這些機會沒有對到你的能力缺口，但可能是你想找的</div></div>' +
+        '<span class="pill pill-muted">' + list.length + ' / ' + all.length + ' 項</span></div>' +
+      '<div class="browse-filter"><span class="mini">類型</span><div class="filter-row">' + typeChips + '</div></div>' +
+      '<div class="browse-filter"><span class="mini">領域</span><div class="filter-row">' + fieldChips + '</div></div>' +
+      (groups || '<div class="empty" style="padding:26px 0">這個組合目前沒有機會，換個類型或領域看看。</div>') +
+    '</section>';
+  }
+
   /* ── 互動：篩選 / 學習資源 → 加入學習目標 ─────────────────── */
   OD.on('res-filter', function (el) {
     filterType = el.getAttribute('data-type') || 'all';
     render();
   });
+  /* 放掉 ?dir= 的範圍限制；網址也一起清掉，重新整理才不會又跳回單一方向 */
+  OD.on('res-all', function () {
+    focus = '';
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    render();
+  });
+  /* 跳到探索區。用的是捲動而不是換頁，篩選狀態與已展開的東西都留著；
+     scroll-margin-top 在 CSS 裡，抵掉 sticky 的 appbar */
+  OD.on('goto-browse', function () {
+    var s = document.querySelector('#content section[data-od-id=browse]');
+    if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  OD.on('browse-type', function (el) { browseType = el.getAttribute('data-k') || 'all'; render(); });
+  OD.on('browse-field', function (el) { browseField = el.getAttribute('data-k') || 'all'; render(); });
 
+  /* 探索區的機會沒有 dirId，dir 會是 null——呼叫端要能接受這件事 */
   function findResource(dirId, rid) {
-    var d = dirById(dirId); if (!d) return null;
-    var out = null;
-    Object.keys(d.resources).forEach(function (k) {
-      d.resources[k].forEach(function (r) { if (r.id === rid) out = { r: r, kind: k, dir: d }; });
-    });
-    return out;
+    var d = dirById(dirId);
+    if (d) {
+      var out = null;
+      Object.keys(d.resources).forEach(function (k) {
+        d.resources[k].forEach(function (r) { if (r.id === rid) out = { r: r, kind: k, dir: d }; });
+      });
+      if (out) return out;
+    }
+    var o = (db.opportunities || []).filter(function (x) { return x.id === rid; })[0];
+    return o ? { r: o, kind: o.type, dir: null } : null;
   }
   function bestSubject(text) {
     var t = String(text);
@@ -185,9 +347,248 @@
 
   OD.on('res-goal', function (el) {
     var f = findResource(el.getAttribute('data-dir'), el.getAttribute('data-r')); if (!f) return;
-    openGoalForm(f, null);
+    /* 從詳情進來的，存檔後要回到詳情，不要把人丟回清單上自己找 */
+    openGoalForm(f, null, el.getAttribute('data-from') === 'detail');
   });
   OD.on('goal-detail', function (el) { openGoalDetail(el.getAttribute('data-id')); });
+
+  /* ── 點一列看詳情 ───────────────────────────────────────── */
+  /* 列上只塞得下一行字，這裡把它講清楚：這是什麼、為什麼在這裡、現在加入了沒。
+     動作鈕跟列上的一樣，所以看完可以直接加，不必先關掉再回去找那一列。 */
+  function openResDetail(dirId, rid) {
+    var f = findResource(dirId, rid); if (!f) return;
+    var r = f.r, kind = f.kind, isCourse = kind === 'course';
+    var act = RES_ACTION[kind] || RES_ACTION.online;
+    var jc = isCourse ? courseByResource(r.id) : null;
+    var jt = isCourse ? null : taskByResource(r.id);
+    var jg = goalByResource(r.id);
+    /* 教務處已經有同名的課就用它真實的學期與學分——軟體工程的 meta 只寫「本學期修課中」，
+       照 meta 猜會猜成 2 學分，跟修課紀錄上的 3 學分打架 */
+    var rec = isCourse ? (jc || sameCourse(r)) : null;
+    var cr = rec ? rec.credits : (/學分/.test(String(r.meta || '')) ? creditsOf(r.meta) : null);
+
+    var facts = [['類型', RES_LABEL[kind] || kind], ['提供單位', r.provider || '—']];
+    if (!f.dir) facts.push(['領域', r.field || '—']);
+    /* 課程的 meta 是「下學期 · 3 學分」，拆成學期與學分比原字串好讀；問不到就說問不到 */
+    if (isCourse) facts.push(['學期', rec ? rec.semester : semesterOf(r.meta)], ['學分', cr == null ? '依開課公告' : cr + ' 學分']);
+    else facts.push(['時間', r.meta || '—']);
+
+    /* 推薦區的資源掛在某個職涯方向底下，探索區的沒有——所以由誰解釋它為什麼出現 */
+    var why = f.dir
+      ? '<div class="meta">它出現在《' + OD.esc(f.dir.name) + '》的推薦清單；這個方向與你的能力輪廓重疊，但還有這些缺口：</div>' +
+        ((f.dir.gap && f.dir.gap.length)
+          ? '<div class="chip-set" style="margin-top:9px">' + f.dir.gap.map(function (x) { return '<span class="gap-chip">' + OD.esc(x) + '</span>'; }).join('') + '</div>'
+          : '<div class="mini" style="margin-top:7px">這個方向沒有標示能力缺口。</div>')
+      : '<div class="meta">' + OD.esc(r.note || '探索區的機會。') + '</div>' +
+        '<div class="meta" style="margin-top:7px">它沒有對到你的能力缺口，所以不會出現在推薦清單裡——但可能是你在找的機會。</div>';
+
+    var now = [];
+    if (jc) now.push(['修課紀錄', jc.semester + ' · ' + jc.credits + ' 學分 · ' + (jc.grade || '修課中')]);
+    else if (rec) now.push(['修課紀錄', '已有同名課程（' + rec.semester + ' · ' + rec.credits + ' 學分），加入修課會掛上來源，不會多一筆']);
+    if (jt) now.push(['任務清單', jt.title + '（' + OD.fmtDate(jt.date) + '）']);
+    if (jg) now.push(['學習目標', jg.title]);
+    var nowHtml = now.length
+      ? '<div class="stack-sm">' + now.map(function (p) {
+          return '<div class="lrow"><span class="mini">' + OD.esc(p[0]) + '</span><span class="meta">' + OD.esc(p[1]) + '</span></div>';
+        }).join('') + '</div>'
+      : '<div class="mini">還沒加入任何地方。' + (isCourse ? '按下面的「加入修課」會變成一筆修課紀錄。' : '按下面的「加入任務」會排進今天的清單。') + '</div>';
+
+    var next = isCourse
+      ? '這門課會進「修課與畢業」的修課紀錄（' + (rec ? rec.semester : semesterOf(r.meta)) + (cr == null ? '' : '、' + cr + ' 學分') + '），學分一起算進畢業門檻。'
+      : '加入後會在今天的清單多一顆「' + act.verb + ' ' + r.name + '」，任務類型是「' + act.kind + '」。';
+
+    var acts = isCourse
+      ? [(jc ? '<button class="btn btn-added" data-action="res-open" data-k="course" data-id="' + jc.id + '">' + ICO.check + '已加入修課</button>'
+             : '<button class="btn btn-primary" data-action="res-join" data-from="detail" data-dir="' + OD.esc(dirId) + '" data-r="' + r.id + '">' + ICO.plus + '加入修課</button>')]
+      : [(jt ? '<button class="btn btn-added" data-action="res-open" data-k="task" data-id="' + jt.id + '">' + ICO.check + '已加入任務</button>'
+             : '<button class="btn btn-primary" data-action="res-task" data-from="detail" data-dir="' + OD.esc(dirId) + '" data-r="' + r.id + '">' + ICO.plus + '加入任務</button>')];
+    acts.push(jg
+      ? '<button class="btn btn-ghost" data-action="goal-detail" data-id="' + jg.id + '">' + ICO.check + '已設目標</button>'
+      : '<button class="btn btn-ghost" data-action="res-goal" data-from="detail" data-dir="' + OD.esc(dirId) + '" data-r="' + r.id + '">設為目標</button>');
+    acts.push('<button class="btn btn-secondary" data-action="modal-close">關閉</button>');
+
+    OD.modal({
+      title: OD.esc(r.name),
+      sub: OD.esc(RES_LABEL[kind] || kind) + ' · ' + OD.esc(r.provider || ''),
+      body:
+        '<div class="detail-grid">' + facts.map(function (p) {
+          return '<div class="detail-row"><span class="k">' + OD.esc(p[0]) + '</span><span class="v">' + OD.esc(p[1]) + '</span></div>';
+        }).join('') + '</div>' +
+        '<div><div class="section-title" style="margin-bottom:8px">' + (f.dir ? '為什麼推薦它' : '這是什麼機會') + '</div>' + why + '</div>' +
+        '<div><div class="section-title" style="margin-bottom:8px">目前的狀態</div>' + nowHtml + '</div>' +
+        '<div class="avoid-note">' + ICO.link + OD.esc(next) + '</div>',
+      foot: acts.join('')
+    });
+  }
+  OD.on('res-detail', function (el) { openResDetail(el.getAttribute('data-dir'), el.getAttribute('data-r')); });
+
+  /* ── 資源 → 修課紀錄／任務 ─────────────────────────────── */
+  /* 加入之前先讓使用者看一眼：資源帶進來的名稱、學期、類型都只是預設值，
+     按下確認之前都還能改。課程與任務各一張表單，欄位就是它之後會變成的那一筆。 */
+  var pending = null;
+  OD.on('res-join', function (el) { openJoinForm(el, 'course'); });
+  OD.on('res-task', function (el) { openJoinForm(el, 'task'); });
+
+  /* 改欄位時另外做一個物件，不動原本那一筆 */
+  function withFields(obj, patch) {
+    var o = {}; Object.keys(obj).forEach(function (x) { o[x] = obj[x]; });
+    Object.keys(patch).forEach(function (k) { o[k] = patch[k]; });
+    return o;
+  }
+  function field(label, inner, span) {
+    return '<div class="field' + (span ? ' span-2' : '') + '"><label>' + label + '</label>' + inner + '</div>';
+  }
+  function opts(list, sel) {
+    return list.map(function (o) {
+      return '<option value="' + OD.esc(o[0]) + '"' + (o[0] === sel ? ' selected' : '') + '>' + OD.esc(o[1]) + '</option>';
+    }).join('');
+  }
+  /* 加入後會去哪裡、或者原本就在那裡——寫在同一條提示裡 */
+  function joinNote(text) { return '<div class="avoid-note">' + ICO.link + text + '</div>'; }
+
+  function openJoinForm(el, mode) {
+    var f = findResource(el.getAttribute('data-dir'), el.getAttribute('data-r')); if (!f) return;
+    var r = f.r, isCourse = mode === 'course';
+    var rec = isCourse ? (courseByResource(r.id) || sameCourse(r)) : null;
+    pending = { mode: mode, dir: el.getAttribute('data-dir'), rid: r.id, from: el.getAttribute('data-from') === 'detail' };
+
+    var body, okLabel;
+    if (isCourse) {
+      var sem = rec ? rec.semester : semesterOf(r.meta);
+      /* meta 沒寫學分就別硬掰一個數字出來，帶 2 學分讓使用者自己改 */
+      var cr = rec ? rec.credits : (/學分/.test(String(r.meta || '')) ? creditsOf(r.meta) : 2);
+      okLabel = '確認加入修課';
+      body = '<div class="form-grid">' +
+        field('課程名稱', '<input class="input" id="rj-name" value="' + OD.esc(rec ? rec.name : r.name) + '">', true) +
+        field('學期', '<select class="select" id="rj-sem">' + opts((db.semesterOrder || []).map(function (s) { return [s, s]; }), sem) + '</select>') +
+        field('學分', '<input class="input" type="number" min="0" max="12" id="rj-credits" value="' + cr + '">') +
+        field('類別', '<select class="select" id="rj-cat">' + opts(db.categories.map(function (c) { return [c.id, c.name]; }), rec ? rec.category : 'dept-elective') + '</select>') +
+        field('授課教師', '<input class="input" id="rj-teacher" value="' + OD.esc((rec ? rec.teacher : r.provider) || '') + '">', true) +
+        '</div>' +
+        joinNote(rec
+          ? '修課紀錄裡已經有「' + OD.esc(rec.name) + '」，確認後會更新那一筆並掛上來源，不會多一筆。'
+          : '確認後會新增一筆修課紀錄，學分一起算進畢業門檻。');
+    } else {
+      var act = RES_ACTION[f.kind] || RES_ACTION.online;
+      okLabel = '確認加入任務';
+      body = '<div class="form-grid">' +
+        field('任務名稱', '<input class="input" id="rt-title" value="' + OD.esc(act.verb + ' ' + r.name) + '">', true) +
+        field('任務類型', '<select class="select" id="rt-kind">' + db.taskKindGroups.map(function (g) {
+          return '<optgroup label="' + OD.esc(g[0]) + '">' + opts(g[1].map(function (k) { return [k, k]; }), act.kind) + '</optgroup>';
+        }).join('') + '</select>') +
+        field('日期', '<input class="input" type="date" id="rt-date" value="' + OD.today + '">') +
+        field('科目', '<select class="select" id="rt-sid">' +
+          opts([['', '其他（不歸科目）']].concat(db.subjects.map(function (s) { return [s.id, s.name]; })), '') + '</select>') +
+        '</div>' +
+        joinNote('確認後會排在「今天」，任務類型是「' + OD.esc(act.kind) + '」；做完可以回頭補一筆成果。');
+    }
+
+    OD.modal({
+      title: isCourse ? '加入修課紀錄' : '加入任務清單',
+      sub: '來源：' + OD.esc(f.dir ? f.dir.name : '探索機會') + ' · ' + OD.esc(RES_LABEL[f.kind] || f.kind) + ' · ' + OD.esc(r.name),
+      wide: true, body: body,
+      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+            '<button class="btn btn-primary" data-action="' + (isCourse ? 'rj-save' : 'rt-save') + '">' + ICO.check + okLabel + '</button>'
+    });
+  }
+
+  /* 課程就是「去修它」。教務處匯進來的同名課程直接就掛上來源，
+     不再複製一門，否則修課紀錄會出現兩筆一樣的課。 */
+  OD.on('rj-save', function () {
+    if (!pending || pending.mode !== 'course') return;
+    var p = pending, f = findResource(p.dir, p.rid); if (!f) return;
+    var r = f.r;
+    var name = ((OD.$('#rj-name') || {}).value || '').trim();
+    if (!name) { OD.toast('請輸入課程名稱'); return; }
+    var sem = OD.$('#rj-sem').value || db.currentSemester;
+    var cr = Math.max(0, +OD.$('#rj-credits').value || 0);
+    var cat = OD.$('#rj-cat').value;
+    var teacher = ((OD.$('#rj-teacher') || {}).value || '').trim();
+    var same = db.courses.filter(function (c) { return String(c.name).trim() === name; })[0];
+    var msg;
+    if (same) {
+      db.courses = db.courses.map(function (c) {
+        return c.id === same.id
+          ? withFields(c, { name: name, credits: cr, semester: sem, category: cat, teacher: teacher, sourceResourceId: r.id })
+          : c;
+      });
+      msg = '「' + name + '」本來就在修課紀錄裡，已更新並標上來源';
+    } else {
+      db.courses.push({
+        id: OD.uid('c'), name: name, credits: cr, category: cat, semester: sem,
+        grade: sem === (db.currentSemester || '') ? '' : '未修', teacher: teacher,
+        sourceResourceId: r.id, fromResource: true
+      });
+      msg = '已加入修課紀錄：' + name + '（' + sem + '）';
+    }
+    pending = null;
+    OD.save(); OD.closeModal(); render(); OD.toast(msg);
+    /* 從詳情裡按的，確認後回到詳情：狀態那一區會多一列、按鈕也跟著變 */
+    if (p.from) openResDetail(p.dir, p.rid);
+  });
+
+  /* 其他四類都是「排一件該做的事」，動詞與任務類型依資源類型決定 */
+  OD.on('rt-save', function () {
+    if (!pending || pending.mode !== 'task') return;
+    var p = pending, f = findResource(p.dir, p.rid); if (!f) return;
+    var title = ((OD.$('#rt-title') || {}).value || '').trim();
+    if (!title) { OD.toast('請輸入任務名稱'); return; }
+    var t = {
+      id: OD.uid('k'), date: OD.$('#rt-date').value || OD.today, start: '', end: '', scope: 'day',
+      sid: OD.$('#rt-sid').value || '', title: title, kind: OD.$('#rt-kind').value,
+      minutes: 0, done: false, type: 'time', sourceResourceId: p.rid
+    };
+    pending = null;
+    db.tasks.push(t);
+    OD.save(); OD.closeModal(); render(); OD.toast('已加入任務：' + title);
+    if (p.from) openResDetail(p.dir, p.rid);
+  });
+  /* 已加入的再看一眼：確認它進了哪裡、也留一條退掉的路 */
+  OD.on('res-open', function (el) {
+    var kind = el.getAttribute('data-k'), id = el.getAttribute('data-id');
+    var rec = kind === 'course' ? OD.course(id) : db.tasks.filter(function (t) { return t.id === id; })[0];
+    if (!rec) return;
+    var rows = kind === 'course'
+      ? [['學期', rec.semester], ['學分', rec.credits + ' 學分'], ['類別', catName(rec.category)],
+         ['成績', rec.grade || '修課中'], ['授課教師', rec.teacher || '—']]
+      : [['日期', OD.fmtDate(rec.date)], ['任務類型', rec.kind],
+         ['科目', rec.sid ? OD.subjectName(rec.sid) : '其他（尚未歸科目）']];
+    OD.modal({
+      title: OD.esc(rec.name || rec.title),
+      sub: kind === 'course' ? '已加入修課紀錄' : '已加入任務清單',
+      body: '<div class="detail-grid">' + rows.map(function (p) {
+          return '<div class="detail-row"><span class="k">' + OD.esc(p[0]) + '</span><span class="v">' + OD.esc(p[1]) + '</span></div>';
+        }).join('') + '</div>' +
+        '<div class="avoid-note" style="margin-top:14px">' + ICO.link +
+          (kind === 'course'
+            ? '這門課會列在「修課與畢業」的修課紀錄，學分一起算進畢業門檻。'
+            : '這件任務會出現在首頁「今天」的清單；做完可以回頭補一筆成果。') + '</div>',
+      foot: '<button class="btn btn-danger" data-action="res-drop" data-k="' + kind + '" data-id="' + id + '">' + ICO.trash + '移除</button>' +
+            '<button class="btn btn-secondary" data-action="modal-close">關閉</button>'
+    });
+  });
+  OD.on('res-drop', function (el) {
+    var kind = el.getAttribute('data-k'), id = el.getAttribute('data-id');
+    if (kind === 'course') {
+      var c = OD.course(id); if (!c) return;
+      if (c.fromResource) {
+        db.courses = db.courses.filter(function (x) { return x.id !== id; });
+        OD.toast('已從修課紀錄移除：' + c.name);
+      } else {
+        db.courses = db.courses.map(function (x) {
+          if (x.id !== id) return x;
+          var o = {}; Object.keys(x).forEach(function (k) { if (k !== 'sourceResourceId') o[k] = x[k]; });
+          return o;
+        });
+        OD.toast('「' + c.name + '」本來就在修課紀錄裡，只取消了來源標記');
+      }
+    } else {
+      var t = db.tasks.filter(function (x) { return x.id === id; })[0]; if (!t) return;
+      db.tasks = db.tasks.filter(function (x) { return x.id !== id; });
+      OD.toast('已移除任務：' + t.title);
+    }
+    OD.save(); OD.closeModal(); render();
+  });
   OD.on('goal-edit', function (el) {
     var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
     openGoalForm(null, g);
@@ -201,13 +602,15 @@
     var c = OD.$('#rg-weekcustom'); if (c) c.style.display = el.value === 'custom' ? '' : 'none';
   });
 
-  function openGoalForm(f, existing) {
+  function openGoalForm(f, existing, fromDetail) {
     var g = existing || null;
-    var dirId = g ? g.career : f.dir.id;
+    /* 從探索區點進來的機會沒有對應職涯方向，能力缺口留空，之後再自己補 */
+    var fromBrowse = !g && !!f && !f.dir;
+    var dirId = g ? g.career : (f.dir ? f.dir.id : '');
     var kind = g ? (g.type || 'activity') : f.kind;
     var rid = g ? g.sourceResourceId : f.r.id;
     var resName = g ? g.sourceResourceName : f.r.name;
-    var dir = dirById(dirId) || { id: dirId, name: g ? (g.careerName || dirId) : dirId, gap: [] };
+    var dir = dirById(dirId) || { id: dirId, name: g ? (g.careerName || dirId) : (fromBrowse ? '探索機會' : dirId), gap: [] };
     var skills = g ? (g.skills || []).slice() : (dir.gap || []).slice();
     var title = g ? g.title : ('完成：' + resName);
     var deadline = g ? g.deadline : addDays(OD.today, 28);
@@ -218,7 +621,7 @@
     var autoT = g ? g.autoCreateTasks !== false : true;
     var inSet = weekHours === 1 || weekHours === 2 || weekHours === 3;
 
-    form = { dirId: dirId, rid: rid, resName: resName, skills: skills, dirName: dir.name, existingId: g ? g.id : '', cal: addCal, auto: autoT };
+    form = { dirId: dirId, rid: rid, resName: resName, skills: skills, dirName: dir.name, existingId: g ? g.id : '', cal: addCal, auto: autoT, returnTo: !!fromDetail };
 
     var typeOpts = Object.keys(RES_LABEL).map(function (k) {
       return '<option value="' + k + '"' + (k === kind ? ' selected' : '') + '>' + RES_LABEL[k] + '</option>';
@@ -234,11 +637,11 @@
       }).join('') + '<option value="custom"' + (inSet ? '' : ' selected') + '>自訂時數</option>';
     var skillChips = skills.length
       ? skills.map(function (x) { return '<span class="build-chip">' + OD.esc(x) + '</span>'; }).join('')
-      : '<span class="mini">此方向未標示能力缺口</span>';
+      : '<span class="mini">' + (fromBrowse ? '探索區的機會沒有對應的能力缺口，之後可自行補上' : '此方向未標示能力缺口') + '</span>';
 
     OD.modal({
       title: g ? '編輯學習目標' : '加入學習目標',
-      sub: '來源：' + OD.esc(dir.name) + ' · ' + OD.esc(RES_LABEL[kind] || kind) + ' · ' + OD.esc(resName),
+      sub: '來源：' + OD.esc(fromBrowse ? '探索機會' : dir.name) + ' · ' + OD.esc(RES_LABEL[kind] || kind) + ' · ' + OD.esc(resName),
       wide: true,
       body: '<div class="form-grid">' +
         '<div class="field span-2"><label>目標名稱</label><input class="input" id="rg-title" value="' + OD.esc(title) + '"></div>' +
@@ -320,6 +723,7 @@
     db.goals.push(g);
     syncTasks(g);
     OD.save(); OD.closeModal(); render(); OD.toast('已加入學習目標');
+    if (form.returnTo) openResDetail(form.dirId, form.rid);
   });
 
   function openGoalDetail(id) {

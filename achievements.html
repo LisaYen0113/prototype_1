@@ -14,6 +14,9 @@
   .fchip:hover{ color: var(--fg); border-color: color-mix(in oklch, var(--fg) 20%, var(--border)); }
   .fchip.is-on{ background: var(--fg); border-color: var(--fg); color: var(--bg); font-weight: 600; }
   .fchip .c{ font-family: var(--font-mono); font-size: 11px; opacity: .72; }
+  @media (max-width: 920px){
+    .fchip{ min-height: 44px; padding: 8px 13px; }
+  }
   .sk-chip{ display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--fg-soft); font-size: 12px; color: color-mix(in oklch, var(--fg) 80%, var(--muted)); }
   .sk-chip .c{ font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
   .pick{ display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
@@ -23,6 +26,21 @@
   .pick.on .box{ background: var(--accent); border-color: var(--accent); color: var(--surface); }
   .pick .box .ico{ width: 12px; height: 12px; opacity: 0; }
   .pick.on .box .ico{ opacity: 1; }
+  /* 成果清單排成時間軸：一學期一節點，節點之間用線連起來。
+     線拆成每組自己一段（::after），最後一組只留一小截，
+     否則改用容器畫一條通到底，尾端會拖在最後一張卡片下面。 */
+  .tl{ position: relative; padding-left: 24px; }
+  .tl-group{ position: relative; }
+  .tl-group + .tl-group{ margin-top: 20px; }
+  .tl-group::before,
+  .tl-group::after{ content: ''; position: absolute; }
+  .tl-group::before{ left: -24px; top: 4px; width: 15px; height: 15px; box-sizing: border-box; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); }
+  .tl-group::after{ left: -17px; top: 12px; bottom: -20px; width: 2px; border-radius: 2px; background: var(--border); }
+  .tl-group:last-child::after{ bottom: auto; height: 4px; }
+  .tl-head{ display: flex; align-items: baseline; gap: 9px; margin-bottom: 11px; }
+  .tl-head b{ font-size: 15px; }
+  .tl-body{ display: flex; flex-direction: column; gap: 10px; }
+  .tl-body > .card{ margin-top: 0; }
 </style>
 </head>
 <body data-page="achievements">
@@ -70,7 +88,6 @@
     return String(v || '').split(/[,\uFF0C\u3001\n]/).map(function (s) { return s.trim(); })
       .filter(function (s) { return s; });
   }
-  function pct(a, b) { return b ? Math.min(100, Math.round(a / b * 100)) : 0; }
   function card(title, sub, body, actions) {
     return '<section class="card" data-od-id="' + OD.slug(title) + '" style="margin-top:0"><div class="card-head"><div><div class="card-title">' + title + '</div>' +
       (sub ? '<div class="card-sub">' + sub + '</div>' : '') + '</div>' + (actions || '') + '</div>' + body + '</section>';
@@ -88,9 +105,9 @@
     actions: '<button class="btn btn-primary" data-action="add-achievement">' + ICO.plus + '新增成果</button>'
   });
 
-  function render() { OD.$('#content').innerHTML = '<div style="margin-bottom:16px">' + OD.flowStrip('portfolio') + '</div><div class="split">' + listCol() + sideCol() + '</div>'; }
+  function render() { OD.$('#content').innerHTML = '<div style="margin-bottom:16px">' + OD.flowStrip('portfolio') + '</div>' + listCol(); }
 
-  /* ── 左：成果清單 ───────────────────────────────────────── */
+  /* ── 成果清單 ───────────────────────────────────────────── */
   function filterBar() {
     var chips = ['all'].concat(db.achievementTypes.map(function (t) { return t.value; })).map(function (v) {
       var n = v === 'all' ? db.achievements.length : countByType(v);
@@ -98,22 +115,43 @@
       return '<button class="fchip' + (st.type === v ? ' is-on' : '') + '" data-action="type-filter" data-v="' + v + '">' +
         (v === 'all' ? '全部' : OD.esc(typeLabel(v))) + '<span class="c">' + n + '</span></button>';
     }).join('');
-    return card('成果列表', '點選類型可篩選，共 ' + db.achievements.length + ' 項',
-      '<div class="chip-set">' + chips + '</div>');
+    return card('成果列表', '點選類型可篩選，共 ' + db.achievements.length + ' 項，依學期排成時間軸',
+      '<div class="chip-set">' + chips + '</div>',
+      '<a class="btn btn-sm btn-ghost" href="diagnosis.html">' + ICO.star + '能力診斷</a>');
   }
+  /* 時間軸：先分學期（一學期一個節點），段內再依日期新到舊。
+     學習歷程是回頭看的東西，用「哪一學期做了什麼」讀最順。 */
   function listCol() {
     var items = visible();
-    var list = items.length
-      ? items.map(achCard).join('')
-      : '<section class="card" data-od-id="achievements-empty" style="margin-top:0"><div class="empty">此類型尚無成果紀錄。</div></section>';
-    return '<div class="stack">' + filterBar() + list + '</div>';
+    if (!items.length) {
+      return '<div class="stack">' + filterBar() +
+        '<section class="card" data-od-id="achievements-empty" style="margin-top:0"><div class="empty">此類型尚無成果紀錄。</div></section></div>';
+    }
+    var order = db.semesterOrder || [];
+    var groups = {}, keys = [];
+    items.forEach(function (a) {
+      var k = a.semester || '未標示學期';
+      if (!groups[k]) { groups[k] = []; keys.push(k); }
+      groups[k].push(a);
+    });
+    /* 新的學期排上面；對不到學期表的一律沉到最後 */
+    keys.sort(function (a, b) {
+      return (order.indexOf(b) > -1 ? order.indexOf(b) : -1) - (order.indexOf(a) > -1 ? order.indexOf(a) : -1);
+    });
+    var tl = keys.map(function (k) {
+      return '<section class="tl-group"><div class="tl-head"><b>' + OD.esc(k) + '</b>' +
+        '<span class="meta">' + groups[k].length + ' 項</span></div>' +
+        '<div class="tl-body">' + groups[k].map(achCard).join('') + '</div></section>';
+    }).join('');
+    return '<div class="stack">' + filterBar() + '<div class="tl">' + tl + '</div></div>';
   }
   function achCard(a) {
     var ev = evidenceOf(a.id);
     var cn = courseName(a.courseId);
+    /* 時間軸上日期先讀，再看到類型與成績 */
     var head = '<div class="row" style="gap:8px;flex-wrap:wrap">' +
-      '<span class="tag tag-plain">' + OD.esc(typeLabel(a.type)) + '</span>' +
       '<span class="meta num">' + OD.esc(a.date) + '</span>' +
+      '<span class="tag tag-plain">' + OD.esc(typeLabel(a.type)) + '</span>' +
       (a.grade ? '<span class="tag">成績 ' + OD.esc(a.grade) + '</span>' : '') + '</div>';
     var tech = a.tech && a.tech.length
       ? '<div class="spec-row"><span class="mini">技術</span><div class="chip-set">' +
@@ -129,7 +167,8 @@
     return '<article class="card" style="margin-top:0" data-od-id="ach-' + a.id + '">' +
       head +
       '<div class="card-title" style="margin-top:9px">' + OD.esc(a.title) + '</div>' +
-      '<div class="card-sub">' + OD.esc(a.semester) + (cn ? ' · 對應課程：' + OD.esc(cn) : '') + '</div>' +
+      /* 學期現在寫在外面的時間軸標題上，卡片裡不用再重複一次 */
+      (cn ? '<div class="card-sub">對應課程：' + OD.esc(cn) + '</div>' : '') +
       '<p class="ach-sum">' + OD.esc(a.summary || '尚未填寫摘要。') + '</p>' +
       tech + skills + links + files +
       '<div class="row-between" style="margin-top:13px;padding-top:12px;border-top:1px solid var(--border)">' +
@@ -140,40 +179,6 @@
         '</span></div>' +
     '</article>';
   }
-
-  /* ── 右：類型分佈 / 能力標籤 ────────────────────────────── */
-  function typeCard() {
-    var total = db.achievements.length || 1;
-    var rows = db.achievementTypes.map(function (t) {
-      var n = countByType(t.value); if (!n) return '';
-      return '<div style="margin-bottom:11px"><div class="row-between" style="margin-bottom:5px">' +
-        '<span class="mini">' + OD.esc(t.label) + '</span><span class="meta num">' + n + ' 項 · ' + pct(n, total) + '%</span></div>' +
-        '<div class="bar"><i style="width:' + pct(n, total) + '%"></i></div></div>';
-    }).join('');
-    return card('類型分佈', '各類型占全部成果比例', rows || '<div class="meta">尚無資料</div>');
-  }
-  function skillCard() {
-    var map = {};
-    db.achievements.forEach(function (a) {
-      (a.skills || []).forEach(function (s) { map[s] = (map[s] || 0) + 1; });
-    });
-    var arr = Object.keys(map).sort(function (a, b) { return map[b] - map[a] || a.localeCompare(b); });
-    var chips = arr.map(function (s) {
-      return '<span class="sk-chip">' + OD.esc(s) + '<span class="c">×' + map[s] + '</span></span>';
-    }).join('');
-    var ev = db.skillEvidence.filter(function (e) { return e.source === 'achievement'; }).length;
-    var linked = {};
-    db.skillEvidence.filter(function (e) { return e.source === 'achievement'; })
-      .forEach(function (e) { linked[e.skillId] = true; });
-    var linkedN = Object.keys(linked).length;
-    var body = '<div class="chip-set">' + chips + '</div>' +
-      '<div class="avoid-note" style="margin-top:14px">' + ICO.star +
-        '共 ' + arr.length + ' 個能力標籤，其中 ' + linkedN + ' 項已建立正式能力證據。' +
-        '此清單由成果標籤自動彙整。</div>' +
-      '<a class="btn btn-secondary" href="diagnosis.html" style="width:100%;justify-content:center;margin-top:12px">前往能力診斷</a>';
-    return card('能力標籤聚合', '成果帶出的能力關鍵字', body);
-  }
-  function sideCol() { return '<div class="stack">' + typeCard() + skillCard() + '</div>'; }
 
   /* ── 互動：篩選 ─────────────────────────────────────────── */
   OD.on('type-filter', function (el) { st.type = el.getAttribute('data-v'); render(); });

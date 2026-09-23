@@ -75,8 +75,6 @@ ul { margin: 0; padding: 0; list-style: none; }
 .nav-item .ico{ width: 17px; height: 17px; flex: none; }
 .nav-item:hover{ background: var(--fg-soft); color: var(--fg); }
 .nav-item[aria-current="page"]{ background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; }
-.nav-item[aria-current="page"] .nav-count{ color: color-mix(in oklch, var(--accent) 68%, var(--fg)); }
-.nav-count{ margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
 .nav-sub{ padding-left: 24px; min-height: 38px; font-size: 13px; }
 .nav-sub .ico{ width: 15px; height: 15px; opacity: .82; }
 .nav-sub[aria-current="page"] .ico{ opacity: 1; }
@@ -95,7 +93,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 }
 .appbar h1{ font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
 .appbar .sub{ font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-.appbar-actions{ display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.appbar-actions{ display: flex; align-items: center; justify-content: flex-end; gap: 9px; flex-wrap: wrap; }
 
 /* ── buttons ──────────────────────────────────────────────── */
 .btn{
@@ -125,14 +123,18 @@ ul { margin: 0; padding: 0; list-style: none; }
 .card-sub{ font-size: 13px; color: var(--muted); margin-top: 3px; }
 .grid-2{ display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
 .grid-3{ display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
-.grid-4{ display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
-.grid-2 > .card + .card, .grid-3 > .card + .card, .grid-4 > .card + .card{ margin-top: 0; }
+.grid-2 > .card + .card, .grid-3 > .card + .card{ margin-top: 0; }
 .split{ display: grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr); gap: 16px; align-items: start; }
 .cal-top{ max-width: 640px; min-width: 0; }
-.cal-head{ display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
-.cal-head .cal-title{ font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
 .row{ display: flex; align-items: center; gap: 12px; }
 .row-between{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* 標題長的時候，右邊那顆小標籤會判斷「這行放不下」而自己折到下一行，
+   折行後又只剩它一個、被 space-between 推到最左邊，看起來像壞掉。
+   這種列改用 is-keep：固定不換行，讓文字自己收縮，標籤留在右上。 */
+.row-between.is-keep{ flex-wrap: nowrap; }
+.row-between.is-keep > .grow{ flex: 1 1 0; }
+.row-between.is-keep > .pill,
+.row-between.is-keep > .btn{ flex: none; }
 .stack{ display: flex; flex-direction: column; gap: 12px; }
 .stack-sm{ display: flex; flex-direction: column; gap: 8px; }
 .wrap{ flex-wrap: wrap; }
@@ -224,6 +226,10 @@ ul { margin: 0; padding: 0; list-style: none; }
 /* ── task row ─────────────────────────────────────────────── */
 .task{ display: flex; align-items: flex-start; gap: 13px; padding: 13px 4px; border-bottom: 1px solid var(--border); }
 .task:last-child{ border-bottom: 0; }
+/* 週／月檢視：同一天一組 */
+.task-group + .task-group{ margin-top: 18px; }
+.task-group-head{ margin-bottom: 4px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+.task-group-head .mini.is-today{ color: color-mix(in oklch, var(--accent) 78%, var(--fg)); font-weight: 600; }
 .task.is-done .task-title{ text-decoration: line-through; color: var(--muted); }
 .check{ width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); display: grid; place-items: center; color: transparent; flex: none; margin-top: 1px; transition: background .14s ease, border-color .14s ease; }
 .check:hover{ border-color: var(--accent); }
@@ -252,8 +258,35 @@ ul { margin: 0; padding: 0; list-style: none; }
 .cal-cell.is-selected{ border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .cal-num{ font-family: var(--font-mono); font-size: 12px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; }
 .cal-dots{ display: flex; gap: 3px; flex-wrap: wrap; }
-.cal-dots i{ width: 5px; height: 5px; border-radius: 50%; display: block; }
+/* 日曆上的點只代表「這天有幾項」，不分科目：
+   顏色若照科目分，沒有圖例就沒人看得懂，只會像雜訊。 */
+.cal-dots i{ width: 5px; height: 5px; border-radius: 50%; display: block; background: var(--accent); }
 .cal-count{ font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+
+/* ── 週／月計畫的目標列：這段期間每個目標要完成多少 ────────── */
+.ms{ margin-bottom: 16px; padding: 13px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in oklch, var(--accent-soft) 34%, var(--surface)); }
+.ms-head{ font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--muted); margin-bottom: 11px; }
+.ms-row{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ms-row + .ms-row{ margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border); }
+.ms-row .grow{ flex: 1 1 0; min-width: 0; }
+.ms-row .check{ flex: none; margin-top: 0; }
+.ms-act{ display: flex; gap: 2px; flex: none; }
+.ms-amount{ font-size: 14.5px; font-weight: 650; }
+.ms-row.is-done .ms-amount{ color: var(--ok); }
+/* 週／月刻度的左右箭頭：btn-sm 的內距讓它只有 30px 寬，手指按起來太窄，
+   補到 44×44 才跟其他觸控目標一致。 */
+.period-nav{ min-width: 44px; padding-left: 0; padding-right: 0; font-size: 17px; line-height: 1; }
+
+/* ── 已完成任務：分門別類瀏覽 ──────────────────────────────── */
+.done-group + .done-group{ margin-top: 4px; border-top: 1px solid var(--border); }
+.done-head{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0 8px; }
+.done-name{ display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 620; min-width: 0; }
+.done-name span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.done-list{ padding-bottom: 4px; }
+.done-item{ display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0 8px 2px; border-top: 1px dashed var(--border); }
+.done-item .done-title{ font-size: 13.5px; min-width: 0; word-break: break-word; }
+.done-item .meta{ flex: none; }
+.done-more{ width: 100%; margin: 4px 0 8px; }
 
 /* ── timetable ────────────────────────────────────────────── */
 .tt{ display: grid; grid-template-columns: 58px repeat(5, minmax(0,1fr)); gap: 6px; }
@@ -276,6 +309,11 @@ ul { margin: 0; padding: 0; list-style: none; }
 .tt.is-compact .tt-class{ min-height: 44px; justify-content: center; border-radius: 6px; padding: 5px 7px; border-left-width: 2px; }
 .tt.is-compact .tt-class b{ font-size: 12px; line-height: 1.25; }
 .tt.is-compact .tt-class span{ font-size: 10px; }
+/* 課表的另一種排法：一週五天直著排。桌機顯示方格，手機才顯示這份。 */
+.tt-days{ display: none; }
+.tt-day + .tt-day{ margin-top: 14px; }
+.tt-day-name{ font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.tt-days .tt-class{ min-height: 44px; justify-content: center; margin-top: 6px; }
 
 /* ── timeline ─────────────────────────────────────────────── */
 .tl{ position: relative; display: flex; flex-direction: column; gap: 4px; }
@@ -333,7 +371,8 @@ ul { margin: 0; padding: 0; list-style: none; }
 .toast.out{ opacity: 0; transform: translateY(6px); }
 
 /* ── voice FAB (draggable, system-wide) ───────────────────── */
-.fab-dock{ position: fixed; right: 26px; bottom: 26px; z-index: 50; display: flex; align-items: center; gap: 12px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+/* z-index 壓在遮罩（40）之下：跳出視窗時這顆鈕就該被蓋住，按不到 */
+.fab-dock{ position: fixed; right: 26px; bottom: 26px; z-index: 35; display: flex; align-items: center; gap: 12px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .fab-dock.is-dragging{ cursor: grabbing; }
 .fab{ width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--accent); color: var(--surface); display: grid; place-items: center; box-shadow: var(--shadow); cursor: pointer; transition: transform .12s ease, background .15s ease; }
 .fab:hover{ transform: scale(1.05); background: color-mix(in oklch, var(--accent) 88%, black); }
@@ -346,6 +385,25 @@ ul { margin: 0; padding: 0; list-style: none; }
 .wave{ display: flex; align-items: flex-end; gap: 3px; height: 26px; }
 .wave i{ width: 3px; background: var(--accent); border-radius: 2px; animation: wave 1s ease-in-out infinite; }
 @keyframes wave{ 0%,100%{ height: 22%; } 50%{ height: 100%; } }
+
+/* ── 錄音鍵：按下 FAB 直接開始錄，面板從鈕的旁邊長出來 ──────── */
+.fab{ position: relative; }
+.fab .ico-stop{ display: none; }
+.fab-dock.is-rec .fab,
+.fab-dock.is-rec .fab:hover{ background: var(--danger); }
+.fab-dock.is-rec .fab .ico-mic{ display: none; }
+.fab-dock.is-rec .fab .ico-stop{ display: block; }
+/* 外面一圈會擴散的紅圈：正在錄音這件事一眼看得出來 */
+.fab-dock.is-rec .fab::after{ content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--danger); animation: rec-ring 1.5s ease-out infinite; }
+@keyframes rec-ring{ 0%{ opacity: .85; transform: scale(.9); } 70%,100%{ opacity: 0; transform: scale(1.16); } }
+.fab-rec{ display: none; position: absolute; right: 0; bottom: calc(100% + 12px); align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow); }
+.fab-dock.is-rec .fab-rec{ display: flex; }
+/* 鈕被拖到畫面上半部時，面板改往下長，不然會被視窗切掉 */
+.fab-dock.is-rec-down .fab-rec{ bottom: auto; top: calc(100% + 12px); }
+.fab-rec .rec-dot{ width: 9px; height: 9px; }
+.fab-rec-body{ display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: min(230px, calc(100vw - 120px)); }
+.fab-rec-body b{ font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--muted); }
+.fab-rec-body span{ font-size: 13px; line-height: 1.5; max-height: 3em; overflow: hidden; }
 
 /* ── resume preview ───────────────────────────────────────── */
 .paper{ background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px 34px; }
@@ -375,6 +433,9 @@ ul { margin: 0; padding: 0; list-style: none; }
 .avoid-note{ display: flex; align-items: center; gap: 9px; padding: 11px 13px; border-radius: var(--radius); background: var(--ok-soft); color: color-mix(in oklch, var(--ok) 60%, var(--fg)); font-size: 13px; }
 .avoid-note .ico{ width: 16px; height: 16px; flex: none; }
 .warn-note{ background: var(--warn-soft); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); }
+/* 學習目標進度落後時的重排建議 */
+.pace-note{ padding: 12px 13px; border-radius: var(--radius); background: var(--warn-soft); color: color-mix(in oklch, var(--warn) 72%, var(--fg)); font-size: 13px; line-height: 1.62; }
+.pace-note .row{ margin-top: 10px; }
 
 /* ── page utilities ───────────────────────────────────────── */
 .kpi-card{ background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; display: flex; flex-direction: column; gap: 3px; }
@@ -436,23 +497,117 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 @media (max-width: 1080px){
   .split{ grid-template-columns: 1fr; }
-  .grid-4{ grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
+/* =========================================================================
+   手機版面（≤920px）
+   側邊欄不再是「壓扁的桌機側欄」，而是固定在底部的標籤列；導覽資料來源
+   仍是同一份 OD.NAV，這裡只換呈現方式，不動任何行為。
+   ========================================================================= */
 @media (max-width: 920px){
-  .app{ grid-template-columns: 1fr; }
-  .sidebar{ position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
-  .nav{ flex-direction: row; overflow-x: auto; padding: 6px 12px 12px; }
-  .nav-label{ display: none; }
-  .nav-item{ white-space: nowrap; }
-  .nav-sub{ padding-left: 11px; }
-  .nav-count{ display: none; }
-  .side-foot{ display: none; }
-  .content{ padding: 20px 18px 96px; }
-  .appbar{ padding: 13px 18px; }
-  .grid-2, .grid-3, .grid-4, .form-grid{ grid-template-columns: 1fr; }
+  /* ── 外殼：側欄改為固定底部標籤列 ───────────────────────── */
+  .app{ display: block; }
+  .sidebar{
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 30;
+    height: auto; overflow: visible;
+    background: color-mix(in oklch, var(--surface) 92%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-right: 0; border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -6px 20px oklch(18% 0.012 250 / .05);
+  }
+  .side-brand, .side-foot, .nav-label{ display: none; }
+  .nav{
+    flex-direction: row; align-items: stretch; gap: 2px;
+    padding: 6px 8px; overflow-x: auto; scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar{ display: none; }
+  .nav-item{
+    position: relative; flex: 1 1 0; min-width: 0;
+    flex-direction: column; justify-content: center; gap: 3px;
+    min-height: 52px; padding: 6px 2px; border-radius: 11px;
+    font-size: 10.5px; line-height: 1.15; letter-spacing: -0.01em;
+    text-align: center; white-space: nowrap;
+  }
+  .nav-item .ico{ width: 21px; height: 21px; }
+  .nav-item > span{ max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .nav-sub, .nav-sub .ico{ min-height: 52px; }
+  .nav-sub{ padding-left: 2px; font-size: 10.5px; }
+
+  /* ── appbar：標題與副標一行，動作自成一行並可橫向滑動 ──── */
+  /* 手機上這裡就是唯一的「頁面標題」，留白別省；先前收到 9px 太擠 */
+  .appbar{ padding: 15px 16px 14px; gap: 5px 12px; }
+  .appbar > div:first-child{ display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 9px; min-width: 0; }
+  .appbar h1{ font-size: 19px; }
+  .appbar .sub{ margin-top: 2px; font-size: 11.5px; }
+  /* 動作鈕縮小到一行放得下三顆；真的放不下就換行，不要藏到畫面外 */
+  .appbar-actions{
+    flex: 1 1 100%; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
+  }
+  .appbar-actions:empty{ display: none; }
+  .appbar-actions .btn{ flex: 0 0 auto; white-space: nowrap; font-size: 13px; padding: 0 11px; }
+
+  /* ── 內容：底部讓出標籤列與語音鈕的高度 ────────────────── */
+  .content{ padding: 16px 16px calc(146px + env(safe-area-inset-bottom, 0px)); }
+
+  /* ── 流程條：四步等寬排成一行，箭頭是多餘的 ────────────── */
+  .flow{ flex-wrap: nowrap; gap: 5px; }
+  .flow-sep{ display: none; }
+  .flow-step{
+    flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px;
+    padding: 4px 7px; font-size: 11.5px; white-space: nowrap;
+  }
+  .flow-step .n{ font-size: 10px; }
+
+  /* ── 版面收斂 ──────────────────────────────────────────── */
+  .grid-2, .grid-3, .form-grid{ grid-template-columns: 1fr; }
+  .kpi-card{ padding: 12px 13px; }
+  .kpi-card .v{ font-size: 21px; }
   .tpl-grid{ grid-template-columns: 1fr; }
-  .tt{ grid-template-columns: 46px repeat(5, minmax(96px,1fr)); overflow-x: auto; }
-  .tt.is-compact{ grid-template-columns: 42px repeat(5, minmax(84px,1fr)); overflow-x: auto; }
-  .paper{ padding: 22px 18px; }
+  .card{ padding: 17px 15px; }
+  .paper{ padding: 20px 16px; }
+  .recap-hero{ padding: 26px 20px; }
+  .recap-block{ padding: 18px 16px; }
+  .big-num{ font-size: clamp(34px, 11vw, 52px); }
+  /* 說明文字與按鈕情願換行，也不要讓按鈕被擠到自己折行
+     （例：「加入日誌」變成「加入日／誌」、「語音輸入」變成「語音輸／入」） */
+  .row-between{ flex-wrap: wrap; row-gap: 10px; }
+  .row-between .btn{ white-space: nowrap; }
+  .row-between > .row{ margin-left: auto; }
+
+  /* 模組改成從底部升起的面板，拇指才構得到按鈕 */
+  .scrim{ padding: 0; align-items: flex-end; }
+  .modal{ width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; border-bottom: 0; }
+  .modal-body{ padding: 16px; }
+  .modal-head{ padding: 14px 16px; }
+  .modal-foot{ padding: 12px 16px; }
+  .modal-foot .btn{ flex: 1 1 auto; }
+
+  /* ── 觸控目標補到 44px（WCAG 2.5.5） ───────────────────── */
+  .btn-sm, .seg button, .tabs button{ min-height: 44px; }
+  .opt{ min-height: 52px; }
+  .opt > input[type="checkbox"], .opt > input[type="radio"]{ width: 18px; height: 18px; margin: 3px 0 0; flex: none; }
+  .degree-row{ grid-template-columns: 86px minmax(0,1fr) auto; gap: 11px; min-height: 46px; }
+  .task{ padding: 11px 2px; gap: 11px; }
+  .task-time{ width: auto; min-width: 84px; font-size: 11.5px; }
+  .cal-cell{ min-height: 54px; padding: 5px 6px; }
+  .cal-num{ width: 20px; height: 20px; font-size: 11px; }
+  /* 圓形勾選框維持視覺大小，用偽元素把可點範圍撐到 48px */
+  .check{ position: relative; }
+  .check::before{ content: ''; position: absolute; inset: -13px; border-radius: 50%; }
+  .subj-del{ width: 44px; height: 44px; margin-right: 0; }
+  .subj-toggle{ width: 44px; }
+  .fab-label{ display: none; }
+
+  /* ── 課表：方格在手機只剩三分之一週可見，改成一週五天直著排 ─ */
+  .tt{ display: none; }
+  .tt-days{ display: block; }
+
+  /* ── 語音鈕：浮到標籤列之上，不再壓住內文 ──────────────── */
+  .fab-dock{ right: 16px; bottom: calc(78px + env(safe-area-inset-bottom, 0px)); gap: 0; }
+  .fab{ width: 52px; height: 52px; }
+  .fab .ico{ width: 21px; height: 21px; }
+  /* 提示訊息本來會被標籤列蓋住 */
+  .toast-root{ bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+
   body{ overflow-x: hidden; }
 }

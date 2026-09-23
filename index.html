@@ -7,12 +7,6 @@
 <link rel="stylesheet" href="assets/theme.css">
 <style>
   .ai-prompt{ border: 1px solid color-mix(in oklch, var(--accent) 32%, var(--border)); background: color-mix(in oklch, var(--accent-soft) 42%, var(--surface)); border-radius: var(--radius); padding: 12px 13px; }
-  .ai-step{ display: flex; gap: 11px; padding: 14px 0; border-bottom: 1px solid var(--border); }
-  .ai-step:first-child{ padding-top: 2px; }
-  .ai-step:last-child{ border-bottom: 0; padding-bottom: 0; }
-  .ai-step-n{ flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); border: 1px solid color-mix(in oklch, var(--accent) 32%, var(--border)); }
-  .ai-step-body{ flex: 1 1 auto; min-width: 0; }
-  .ai-step-title{ font-size: 13px; font-weight: 650; margin-bottom: 7px; }
   .ai-prompt-wrap{ position: relative; }
   .ai-prompt-text{ margin: 0; font-size: 12.5px; line-height: 1.62; white-space: pre-wrap; color: color-mix(in oklch, var(--fg) 86%, var(--muted)); max-height: 3.3em; overflow: hidden; transition: max-height .32s ease; }
   .ai-prompt[data-expanded="true"] .ai-prompt-text{ max-height: 640px; }
@@ -26,6 +20,9 @@
   .ai-prompt[data-expanded="true"] .ai-prompt-collapse{ display: inline-flex; }
   .ai-prompt-collapse:hover{ color: var(--fg); }
   .btn.is-copied{ background: var(--ok); border-color: var(--ok); color: oklch(100% 0 0); }
+  @media (max-width: 920px){
+    .ai-prompt-more{ min-height: 44px; }
+  }
 </style>
 </head>
 <body data-page="home">
@@ -54,7 +51,10 @@
     chev: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
     doc: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
   };
-  var KINDS = ['理解', '練習', '複習', '回想', '測驗'];
+  /* 任務類型的分組清單放在 mock data，學習資源頁「加入任務」時共用同一份；
+     各頁各寫一份的話，新增類型時一定會漏改 */
+  var KIND_GROUPS = db.taskKindGroups;
+  var KINDS = KIND_GROUPS.reduce(function (a, g) { return a.concat(g[1]); }, []);
   var AI_PROMPT = [
     '請整理以下對話中與我的學習相關資訊，並以適合放入學習歷程的方式整理。',
     '',
@@ -71,11 +71,10 @@
     '（在這裡貼上你的對話內容）'
   ].join('\n');
 
-  var d0 = OD.parseISO(OD.today);
   var st = {
-    view: 'journal', selected: OD.today, calY: d0.getFullYear(), calM: d0.getMonth(),
-    nt: { mode: 'time', timeMode: 'slot', slot: null, title: '', date: null, sidName: '', start: '19:00', end: '20:30' },
-    sch: { id: null, date: null, slot: null }
+    view: 'journal', unit: 'day', selected: OD.today, paceLater: {},
+    doneMore: {},
+    nt: { mode: 'time', scope: 'day', timeMode: 'slot', slot: null, title: '', date: null, sidName: '', start: '19:00', end: '20:30', kind: null, editId: null }
   };
 
   function dot(h) { return 'oklch(62% 0.13 ' + h + ')'; }
@@ -105,68 +104,220 @@
   OD.appbar({
     title: '首頁',
     sub: OD.fmtDate(OD.today) + ' · 學習規劃與日誌',
-    actions: '<button class="btn btn-secondary" data-action="demo-flow">展示流程</button>' +
-             '<button class="btn btn-primary" data-action="new-task">' + ICO.plus + '新增任務</button>'
+    actions: '<button class="btn btn-primary" data-action="new-task">' + ICO.plus + '新增任務</button>'
   });
 
   /* ── 主要渲染 ───────────────────────────────────────────── */
-  function render() { OD.$('#content').innerHTML = planningCard() + lowerGrid() + kpis(); }
-
-  function lowerGrid() {
-    return '<div class="split" style="margin-top:16px">' + goalsCard() +
-      '<div class="stack">' + coverageCard() + upcomingCard() + '</div></div>';
+  function render() {
+    /* 畫之前先確認這一週／這個月的目標任務都在，缺的補上 */
+    if (ensurePeriodTasks()) OD.save();
+    OD.$('#content').innerHTML = planningCard() +
+      '<div style="margin-top:16px">' + goalsCard() + '</div>' + doneCard();
   }
-
-  function kpis() {
-    var today = OD.tasksOn(OD.today), done = today.filter(function (t) { return t.done; }).length;
-    var cov = OD.coverage();
-    return '<div class="grid-4" style="margin-top:22px">' +
-      kpi(done + ' / ' + today.length, '今日任務完成') +
-      kpi(cov.pct + '<small>%</small>', '本週學習覆蓋') +
-      kpi(db.goals.filter(function (g) { return g.current < g.total; }).length + ' 項', '進行中的學習目標') +
-      kpi(db.student.days + '<small> 天</small>', '距離 ' + db.student.targetLabel) + '</div>';
-  }
-  function kpi(v, k) { return '<div class="kpi-card"><div class="v num">' + v + '</div><div class="k">' + k + '</div></div>'; }
 
   /* 學習規劃：任務 / 日誌 seg + 選定日期，日曆就在同一張卡內 */
   function planningCard() {
     var head =
-      '<div class="card-head"><div><div class="card-title">學習規劃</div><div class="card-sub">' + OD.fmtDate(st.selected) + '</div></div>' +
-        '<div class="row"><button class="btn btn-sm btn-ghost" data-action="date-prev" aria-label="前一天">‹</button>' +
-        '<button class="btn btn-sm btn-secondary" data-action="date-today">今天</button>' +
-        '<button class="btn btn-sm btn-ghost" data-action="date-next" aria-label="後一天">›</button></div></div>';
+      '<div class="card-head"><div><div class="card-title">' +
+        (st.view === 'tasks' ? planTitle() : '學習日誌') + '</div><div class="card-sub">' +
+        (st.view === 'tasks' ? periodLabel() : OD.fmtDate(st.selected)) + '</div></div>' +
+        '<div class="row">' +
+          '<button class="btn btn-sm btn-ghost" data-action="date-prev" aria-label="往前">‹</button>' +
+          /* 已經在今天就不必再給「回到今天」，一顆按了沒反應的按鈕只會讓人困惑 */
+          (st.selected === OD.today ? '' : '<button class="btn btn-sm btn-secondary" data-action="date-today">回到今天</button>') +
+          '<button class="btn btn-sm btn-ghost" data-action="date-next" aria-label="往後">›</button>' +
+        '</div></div>';
     var seg =
       '<div class="seg" style="margin-bottom:15px">' +
         '<button data-action="seg" data-view="journal"' + (st.view === 'journal' ? ' class="is-active"' : '') + '>日誌</button>' +
         '<button data-action="seg" data-view="tasks"' + (st.view === 'tasks' ? ' class="is-active"' : '') + '>任務</button>' +
       '</div>';
+    /* 日曆三種單位都留著，只是換刻度；導覽只留卡頭這一組加減鈕，日曆自己不再給箭頭 */
     var body = st.view === 'tasks'
-      ? calendarInner() + '<hr class="rule" style="margin:18px 0">' + tasksView()
+      ? unitSeg() + calendarInner() + '<hr class="rule" style="margin:18px 0">' + tasksView()
       : journalView();
     return '<section class="card" data-od-id="home-planning">' + head + seg + body + '</section>';
   }
 
+  /* ── 任務的三種瀏覽單位：日 / 週 / 月 ───────────────────── */
+  var UNITS = [['day', '日'], ['week', '週'], ['month', '月']];
+  function unitSeg() {
+    return '<div class="seg" style="margin-bottom:15px">' +
+      UNITS.map(function (u) {
+        return '<button data-action="unit" data-unit="' + u[0] + '"' + (st.unit === u[0] ? ' class="is-active"' : '') + '>' + u[1] + '</button>';
+      }).join('') + '</div>';
+  }
+  function periodDates() {
+    if (st.unit === 'week') return OD.weekDates(st.selected);
+    if (st.unit === 'month') {
+      var p = OD.parseISO(st.selected), n = OD.monthDays(p.getFullYear(), p.getMonth() + 1), out = [];
+      for (var d = 1; d <= n; d++) out.push(OD.iso(new Date(p.getFullYear(), p.getMonth(), d)));
+      return out;
+    }
+    return [st.selected];
+  }
+  function periodLabel() {
+    if (st.unit === 'week') { var w = OD.weekDates(st.selected); return OD.fmtDateShort(w[0]) + ' – ' + OD.fmtDateShort(w[6]); }
+    if (st.unit === 'month') { var p = OD.parseISO(st.selected); return p.getFullYear() + ' 年 ' + (p.getMonth() + 1) + ' 月'; }
+    return OD.fmtDate(st.selected);
+  }
+  function planTitle() { return st.unit === 'month' ? '月計畫' : st.unit === 'week' ? '週計畫' : '日計畫'; }
+
+  /* 週／月刻度先看「這段時間每個目標要完成多少」，再看底下的每日任務。
+     日刻度看到的是今天要做的事，所以不顯示這一塊。
+
+     這一塊不是把目標算出來給你看而已：本週目標就是一筆真的任務（scope=week），
+     勾選、編輯、刪除都跟下面那些每日任務走同一條路，資料也只有這一份。 */
+  function periodStart(scope, iso) {
+    var d = iso || st.selected;
+    if (scope === 'week') return OD.weekStart(d);
+    var p = OD.parseISO(d);
+    return OD.iso(new Date(p.getFullYear(), p.getMonth(), 1));
+  }
+  function periodKey(scope, iso) { return scope + ':' + iso; }
+  /* 這個目標在這一週／這個月該完成哪個範圍、份量多少。
+     單位是章節就講「第幾章」。章節的單位字串是 'Chapters'，直接接在數字後面
+     會變成「完成 1 Chapters」，所以這裡改寫成中文的「完成第 N 章」。 */
+  function isChapters(u) { return /^(chapters?|章)$/i.test(String(u || '').trim()); }
+  function goalPeriod(g, weeks) {
+    if (g.current >= g.total) return null;      /* 已達成，不必再排 */
+    var amount = Math.max(1, Math.round((g.weekTarget || 1) * weeks));
+    var left = Math.max(0, g.total - g.current);
+    amount = Math.min(amount, left) || 1;
+    var from = g.current + 1, to = Math.min(g.total, g.current + amount);
+    var text = isChapters(g.unit)
+      ? (from === to ? '完成第 ' + from + ' 章' : '完成第 ' + from + '–' + to + ' 章')
+      : '完成 ' + amount + ' ' + g.unit;
+    return { text: text, amount: amount, from: from, to: to };
+  }
+  /* 開啟這一週／這個月時，替每個目標補上它的週／月任務。
+     刪掉的那一筆會記在目標的 dropped 上，不會每次重畫又被生回來。 */
+  function ensurePeriodTasks() {
+    var changed = false;
+    ['week', 'month'].forEach(function (scope) {
+      var start = periodStart(scope);
+      var weeks = scope === 'month' ? weeksInMonth(start) : 1;
+      db.goals.forEach(function (g) {
+        if (g.dropped && g.dropped[periodKey(scope, start)]) return;
+        var p = goalPeriod(g, weeks);
+        var t = db.tasks.filter(function (x) {
+          return x.auto && x.goalId === g.id && x.scope === scope && x.date === start;
+        })[0];
+        if (!t) {
+          if (!p) return;                       /* 已達成，不必再開一筆 */
+          db.tasks.push({
+            id: OD.uid('k'), date: start, start: '', end: '', scope: scope,
+            sid: g.sid, title: p.text, kind: '理解', minutes: 0,
+            done: g.current >= p.to, type: 'time', auto: true,
+            goalId: g.id, goalAmount: p.amount, goalFrom: p.from, goalTo: p.to
+          });
+          changed = true;
+          return;
+        }
+        if (t.done) return;                     /* 做完的那筆就是紀錄，不再改它 */
+        if (!p) { t.done = true; changed = true; return; }
+        /* 還沒做的話，份量跟著現在的進度走：上週沒做完的，這週講的還是下一個章節 */
+        if (t.title !== p.text || t.goalAmount !== p.amount || t.goalFrom !== p.from || t.goalTo !== p.to) {
+          t.title = p.text; t.goalAmount = p.amount; t.goalFrom = p.from; t.goalTo = p.to;
+          changed = true;
+        }
+      });
+    });
+    return changed;
+  }
+  function msBlock() {
+    if (st.unit === 'day') return '';
+    var scope = st.unit === 'month' ? 'month' : 'week';
+    var start = periodStart(scope);
+    var items = db.tasks.filter(function (t) {
+      return t.auto && t.scope === scope && t.date === start;
+    }).sort(function (a, b) {
+      var ga = OD.goal(a.goalId), gb = OD.goal(b.goalId);
+      return (ga ? db.goals.indexOf(ga) : 99) - (gb ? db.goals.indexOf(gb) : 99);
+    });
+    if (!items.length) return '';
+    return '<div class="ms"><div class="ms-head">' + (scope === 'month' ? '本月目標' : '本週目標') + '</div>' +
+      items.map(msRow).join('') + '</div>';
+  }
+  function msRow(t) {
+    var g = OD.goal(t.goalId);
+    var period = t.scope === 'month' ? '本月' : '本週';
+    return '<div class="ms-row' + (t.done ? ' is-done' : '') + '">' +
+      '<button class="check" data-action="task-toggle" data-id="' + t.id + '" aria-pressed="' + t.done + '" aria-label="標記這個' + period + '目標完成">' + ICO.check + '</button>' +
+      '<div class="grow"><div class="ms-amount">' + OD.esc(t.title) + '</div>' +
+        '<div class="meta">' + (g
+          ? OD.esc(g.title) + '　·　進度 ' + g.current + ' / ' + g.total + ' ' + g.unit
+          : '目標已刪除') + '</div></div>' +
+      '<div class="ms-act">' +
+        '<button class="btn btn-sm btn-ghost" data-action="task-edit" data-id="' + t.id + '">編輯</button>' +
+        '<button class="btn btn-sm btn-ghost" data-action="task-del" data-id="' + t.id + '">刪除</button>' +
+      '</div></div>';
+  }
+  /* 每日任務做完就把對應的週／月目標一起帶完成，反過來也一樣：
+     兩邊是同一段進度，不各記一份。 */
+  function syncPeriodDone(g) {
+    ['week', 'month'].forEach(function (scope) {
+      var start = periodStart(scope, OD.today);
+      db.tasks.forEach(function (t) {
+        /* 只看今天所在的這一週／這個月：現在的進度不該把未來的週次提前打勾 */
+        if (t.auto && t.goalId === g.id && t.goalTo != null && t.scope === scope && t.date === start) {
+          t.done = g.current >= t.goalTo;
+        }
+      });
+    });
+  }
+  /* 這個月橫跨幾個週次（4 或 5），月目標才不會一律用 4 週去算 */
+  function weeksInMonth(iso) {
+    var p = OD.parseISO(iso), n = OD.monthDays(p.getFullYear(), p.getMonth() + 1), seen = {}, c = 0;
+    for (var d = 1; d <= n; d++) {
+      var w = OD.weekStart(OD.iso(new Date(p.getFullYear(), p.getMonth(), d)));
+      if (!seen[w]) { seen[w] = 1; c++; }
+    }
+    return c;
+  }
+
   function tasksView() {
-    var list = OD.tasksOn(st.selected);
-    if (!list.length) return '<div class="empty">這天還沒有任務。<br><button class="btn btn-sm btn-primary" data-action="new-task" style="margin-top:12px">新增任務</button></div>';
-    var done = list.filter(function (t) { return t.done; }).length;
-    return '<div class="row-between" style="margin-bottom:6px"><span class="meta">' + done + ' / ' + list.length + ' 完成</span>' +
-      '<button class="btn btn-sm btn-secondary" data-action="new-task">' + ICO.plus + '新增</button></div>' +
-      '<div class="task-list">' + list.map(taskRow).join('') + '</div>';
+    var ms = msBlock();
+    var dates = periodDates(), total = 0, done = 0, groups = '';
+    dates.forEach(function (iso) {
+      var list = OD.tasksOn(iso);
+      if (!list.length) return;
+      var d = list.filter(function (t) { return t.done; }).length;
+      total += list.length; done += d;
+      var head = st.unit === 'day' ? '' :
+        '<div class="row-between task-group-head">' +
+          '<span class="mini' + (iso === OD.today ? ' is-today' : '') + '">' + OD.fmtDate(iso) + '</span>' +
+          '<span class="meta">' + d + ' / ' + list.length + ' 完成</span></div>';
+      groups += '<div class="task-group">' + head + '<div class="task-list">' + list.map(taskRow).join('') + '</div></div>';
+    });
+    if (!total) {
+      var scope = st.unit === 'month' ? '這個月' : st.unit === 'week' ? '這週' : '這天';
+      return ms + '<div class="empty">' + scope + '還沒有任務。<br>' +
+        '<button class="btn btn-sm btn-primary" data-action="new-task" style="margin-top:12px">' + ICO.plus + '新增任務</button></div>';
+    }
+    var meta = st.unit === 'day' ? done + ' / ' + total + ' 完成' : '共 ' + total + ' 項 · 完成 ' + done + ' 項';
+    /* 新增任務放清單後面：先看完已經排了什麼，再決定要不要加 */
+    return ms + '<div class="meta" style="margin-bottom:12px">' + meta + '</div>' + groups +
+      '<div class="row" style="margin-top:14px"><button class="btn btn-sm btn-secondary" data-action="new-task">' + ICO.plus + '新增任務</button></div>';
   }
 
   function taskRow(t) {
     var s = OD.subject(t.sid), hue = s ? s.hue : 250;
+    /* 週／月刻度的任務不綁時段，用標籤說明它屬於哪個範圍 */
+    var period = t.scope === 'week' ? '本週' : t.scope === 'month' ? '本月' : '';
     return '<div class="task' + (t.done ? ' is-done' : '') + '">' +
       '<button class="check" data-action="task-toggle" data-id="' + t.id + '" aria-pressed="' + t.done + '" aria-label="標記完成">' + ICO.check + '</button>' +
-      '<div class="task-time">' + (t.start || '') + (t.end ? '<br>' + t.end : '') + '</div>' +
+      '<div class="task-time">' + (period ? '' : (t.start || '') + (t.end ? '<br>' + t.end : '')) + '</div>' +
       '<div class="task-body"><div class="task-title">' + OD.esc(t.title) + '</div>' +
-        '<div class="task-meta"><span class="subject-dot" style="background:' + dot(hue) + '"></span>' +
-          '<span class="mini">' + OD.esc(s ? s.name : '') + '</span>' +
+        '<div class="task-meta">' +
+          /* 一般事務沒有科目，就不要硬掛一顆顏色點 */
+          (s ? '<span class="subject-dot" style="background:' + dot(hue) + '"></span>' +
+            '<span class="mini">' + OD.esc(s.name) + '</span>' : '') +
           '<span class="tag tag-plain">' + OD.esc(t.kind) + '</span>' +
-          '<span class="pill pill-muted">' + t.minutes + ' 分</span>' +
+          (t.minutes ? '<span class="pill pill-muted">' + t.minutes + ' 分</span>' : '') +
+          (period ? '<span class="pill">' + period + '</span>' : '') +
           (t.goalId ? '<span class="pill">目標任務</span>' : '') + '</div>' +
-        '<div class="task-actions"><button class="btn btn-sm btn-ghost" data-action="task-schedule" data-id="' + t.id + '">安排時程</button>' +
+        '<div class="task-actions"><button class="btn btn-sm btn-ghost" data-action="task-edit" data-id="' + t.id + '">編輯</button>' +
           '<button class="btn btn-sm btn-ghost" data-action="task-del" data-id="' + t.id + '">刪除</button></div></div></div>';
   }
 
@@ -187,138 +338,247 @@
     return '<div class="split"><div>' + main + '</div>' + aiJournalCard() + '</div>';
   }
 
-  /* 匯入 AI 學習紀錄：複製整理指令 → 回到 AI 對話 → 貼回學習紀錄 */
+  /* 匯入 AI 學習紀錄：複製指令 → 貼給 AI → 把整理結果貼回日誌（一句話說完，不再編號三步驟） */
   function aiJournalCard() {
     var body =
-      '<div class="ai-step">' +
-        '<div class="ai-step-n">1</div>' +
-        '<div class="ai-step-body"><div class="ai-step-title">複製整理指令</div>' +
-          '<div class="ai-prompt" id="aiPrompt" data-expanded="false">' +
-            '<div class="ai-prompt-wrap"><p class="ai-prompt-text">' + OD.esc(AI_PROMPT) + '</p></div>' +
-            '<div class="ai-prompt-actions">' +
-              '<button class="ai-prompt-more" type="button" data-action="prompt-expand">展開查看完整 Prompt<span class="chev">' + ICO.chev + '</span></button>' +
-              '<button class="ai-prompt-collapse" type="button" data-action="prompt-collapse">收合 ↑</button>' +
-              '<button class="btn btn-sm btn-primary" type="button" data-action="copy-prompt">複製 Prompt</button>' +
-            '</div>' +
-          '</div>' +
+      '<div class="ai-prompt" id="aiPrompt" data-expanded="false">' +
+        '<div class="ai-prompt-wrap"><p class="ai-prompt-text">' + OD.esc(AI_PROMPT) + '</p></div>' +
+        '<div class="ai-prompt-actions">' +
+          '<button class="ai-prompt-more" type="button" data-action="prompt-expand">展開查看完整 Prompt<span class="chev">' + ICO.chev + '</span></button>' +
+          '<button class="ai-prompt-collapse" type="button" data-action="prompt-collapse">收合 ↑</button>' +
+          '<button class="btn btn-sm btn-primary" type="button" data-action="copy-prompt">複製 Prompt</button>' +
         '</div>' +
       '</div>' +
-      '<div class="ai-step">' +
-        '<div class="ai-step-n">2</div>' +
-        '<div class="ai-step-body"><div class="ai-step-title">回到 AI 對話</div>' +
-          '<p class="mini" style="margin:0">將 Prompt 貼到你使用的 AI，讓它整理這次對話。</p>' +
-        '</div>' +
-      '</div>' +
-      '<div class="ai-step">' +
-        '<div class="ai-step-n">3</div>' +
-        '<div class="ai-step-body"><div class="ai-step-title">貼回學習紀錄</div>' +
-          '<p class="mini" style="margin:0">把 AI 整理好的結果貼到「今天的學習紀錄」，確認內容後按「加入日誌」。</p>' +
-        '</div>' +
-      '</div>';
-    return card('匯入 AI 學習紀錄', '把對話整理成學習紀錄的三個步驟', body);
+      '<p class="mini" style="margin:12px 0 0">貼到你使用的 AI 請它整理這次對話，再把結果貼回上面的「今天的學習紀錄」。</p>';
+    return card('匯入 AI 學習紀錄', '把對話整理成學習紀錄', body);
   }
+
+  /* 已完成任務：分門別類回顧。有科目的照科目分（看「這科做了多少」），
+     沒科目的全部收進「其他」一組——請老師寫推薦信這種事不屬於任何一科。 */
+  function doneCard() {
+    var list = db.tasks.filter(function (t) { return t.done; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    if (!list.length) {
+      return '<div style="margin-top:16px">' +
+        card('已完成任務', '完成的任務會累積在這裡', '<div class="empty">還沒有完成的任務。</div>') + '</div>';
+    }
+    var groups = {}, order = [];
+    list.forEach(function (t) {
+      var k = t.sid || '';
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(t);
+    });
+    /* 項目多的排前面，一眼看出時間花在哪；「其他」不分科目，固定排最後 */
+    order.sort(function (a, b) {
+      if (!a !== !b) return a ? -1 : 1;
+      return groups[b].length - groups[a].length;
+    });
+    var body = order.map(function (k) { return doneGroup(k, groups[k]); }).join('');
+    var mins = list.reduce(function (a, t) { return a + (+t.minutes || 0); }, 0);
+    return '<div style="margin-top:16px">' +
+      card('已完成任務', '共 ' + list.length + ' 項' + (mins ? ' · ' + OD.fmtMin(mins) : ''), body) + '</div>';
+  }
+  function doneGroup(k, items) {
+    var s = OD.subject(k);
+    var mins = items.reduce(function (a, t) { return a + (+t.minutes || 0); }, 0);
+    var shown = st.doneMore[k] ? items : items.slice(0, 4);
+    return '<div class="done-group">' +
+      '<div class="done-head"><span class="done-name">' +
+        (s ? '<span class="subject-dot" style="background:' + dot(s.hue) + '"></span>' : '') +
+        '<span>' + OD.esc(s ? s.name : '其他') + '</span></span>' +
+        '<span class="meta">' + items.length + ' 項' + (mins ? ' · ' + OD.fmtMin(mins) : '') + '</span></div>' +
+      '<div class="done-list">' + shown.map(function (t) {
+        return '<div class="done-item"><span class="done-title">' + OD.esc(t.title) + '</span>' +
+          '<span class="meta">' + OD.fmtDateShort(t.date) + (t.minutes ? ' · ' + t.minutes + ' 分' : '') + '</span></div>';
+      }).join('') + '</div>' +
+      (shown.length < items.length
+        ? '<button class="btn btn-sm btn-ghost done-more" data-action="done-more" data-key="' + OD.esc(k) + '">顯示另外 ' + (items.length - shown.length) + ' 項</button>'
+        : '') +
+      '</div>';
+  }
+  OD.on('done-more', function (el) { st.doneMore[el.getAttribute('data-key')] = 1; render(); });
 
   /* 學習目標 */
   function goalsCard() {
     if (!db.goals.length) return card('學習目標', '把大目標拆成每日任務', '<div class="empty">尚無學習目標。</div>');
     return card('學習目標', '目標 → 每週目標 → 每日任務', db.goals.map(goalRow).join(''));
   }
+  /* 落後判定：用「已經過掉的時間」推估此刻應該完成多少，再跟實際進度比 */
+  function goalPace(g) {
+    var start = g.createdAt || g.deadline;
+    var span = Math.max(1, Math.round((OD.parseISO(g.deadline) - OD.parseISO(start)) / 86400000));
+    var gone = Math.max(0, Math.min(span, Math.round((OD.parseISO(OD.today) - OD.parseISO(start)) / 86400000)));
+    var due = Math.min(g.total, Math.round(g.total * gone / span));
+    var short = due - g.current;
+    var weekShort = g.weekTarget != null ? Math.max(0, g.weekTarget - g.weekDone) : 0;
+    return {
+      due: due, short: short, weekShort: weekShort,
+      /* 差到總量的一成、或本週目標沒達到，就值得問一次要不要重排 */
+      behind: g.current < g.total && daysLeft(g.deadline) >= 0 &&
+        (short >= Math.max(1, Math.round(g.total * 0.1)) || (weekShort > 0 && gone > 0))
+    };
+  }
+  OD.on('goal-pace-later', function (el) { st.paceLater[el.getAttribute('data-id')] = 1; render(); });
+  OD.on('goal-edit', function (el) {
+    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
+    var s = OD.subject(g.sid);
+    resetNT();
+    st.nt.mode = 'goal'; st.nt.editGoalId = g.id;
+    st.nt.goal = {
+      title: g.title, sidName: s ? s.name : '', measure: g.measure,
+      total: g.total, week: g.weekTarget || 1, deadline: g.deadline
+    };
+    openNT();
+  });
+  OD.on('goal-del', function (el) {
+    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
+    var pending = db.tasks.filter(function (t) { return t.goalId === g.id && !t.done; }).length;
+    OD.modal({
+      title: '刪除學習目標', sub: '刪除後無法復原',
+      body: '<div>確定要刪除「' + OD.esc(g.title) + '」嗎？</div>' +
+        (pending
+          ? '<div class="meta" style="margin-top:8px">還沒完成的 ' + pending + ' 筆任務會一起刪掉；已經完成的會留在下面的「已完成任務」。</div>'
+          : ''),
+      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
+        '<button class="btn btn-primary" data-action="goal-del-ok" data-id="' + g.id + '">刪除目標</button>'
+    });
+  });
+  OD.on('goal-del-ok', function (el) {
+    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
+    var keep = db.tasks.filter(function (t) { return t.goalId !== g.id || t.done; });
+    db.tasks = keep.map(function (t) {
+      if (t.goalId !== g.id) return t;
+      /* 完成的任務留著當紀錄，但把指向已刪目標的欄位拿掉，不留懸空的連結 */
+      return {
+        id: t.id, date: t.date, start: t.start, end: t.end, scope: t.scope, sid: t.sid,
+        title: t.title, kind: t.kind, minutes: t.minutes, done: t.done, type: t.type
+      };
+    });
+    db.goals = db.goals.filter(function (x) { return x.id !== g.id; });
+    OD.save(); OD.closeModal(); render(); OD.toast('已刪除目標');
+  });
+
   function goalRow(g) {
     var s = OD.subject(g.sid), pct = Math.min(100, Math.round(g.current / g.total * 100));
     var week = (g.weekTarget != null) ? '本週 ' + g.weekDone + ' / ' + g.weekTarget + ' ' + g.unit : g.weekLabel;
     var d = daysLeft(g.deadline);
+    var pace = goalPace(g);
+    /* 進度落後時不直接改排程，先問使用者要不要重排 */
+    var note = (pace.behind && !st.paceLater[g.id])
+      ? '<div class="pace-note">' +
+          (pace.short >= 1
+            ? '依截止日推算，現在應該完成 ' + pace.due + ' / ' + g.total + ' ' + g.unit + '，目前 ' + g.current + '，落後 ' + pace.short + ' ' + g.unit + '。'
+            : '本週目標 ' + g.weekTarget + ' ' + g.unit + '，目前完成 ' + g.weekDone + '，還差 ' + pace.weekShort + ' ' + g.unit + '。') +
+          ' 要重新調整排程嗎？' +
+          '<div class="row" style="gap:6px">' +
+            '<button class="btn btn-sm btn-primary" data-action="goal-plan" data-id="' + g.id + '">調整排程</button>' +
+            '<button class="btn btn-sm btn-ghost" data-action="goal-pace-later" data-id="' + g.id + '">維持原計畫</button>' +
+          '</div></div>'
+      : '';
     return '<div style="padding:13px 0;border-bottom:1px solid var(--border)">' +
-      '<div class="row-between" style="align-items:flex-start"><div class="grow">' +
+      '<div class="row-between is-keep" style="align-items:flex-start"><div class="grow">' +
         '<div class="row" style="gap:7px"><span class="subject-dot" style="background:' + dot(s ? s.hue : 250) + '"></span>' +
         '<b style="font-size:14.5px">' + OD.esc(g.title) + '</b></div>' +
         '<div class="meta" style="margin:4px 0 8px">' + OD.esc(g.weekLabel) + ' · 截止 ' + g.deadline + '（' + (d >= 0 ? '剩 ' + d + ' 天' : '已逾期') + '）</div>' +
       '</div><span class="pill">' + pct + '%</span></div>' +
       '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
-      '<div class="row-between" style="margin-top:8px"><span class="mini">' + g.current + ' / ' + g.total + ' ' + g.unit + '　·　' + week + '</span>' +
-        '<span class="row" style="gap:6px"><button class="btn btn-sm btn-ghost" data-action="goal-plan" data-id="' + g.id + '">拆解任務</button>' +
-        '<button class="btn btn-sm btn-secondary" data-action="goal-progress" data-id="' + g.id + '">完成目標</button></span></div></div>';
+      '<div class="row" style="margin-top:8px;gap:2px">' +
+        '<span class="mini">' + g.current + ' / ' + g.total + ' ' + g.unit + '　·　' + week + '</span>' +
+        '<button class="btn btn-sm btn-ghost" style="margin-left:auto" data-action="goal-edit" data-id="' + g.id + '">編輯</button>' +
+        '<button class="btn btn-sm btn-ghost" data-action="goal-del" data-id="' + g.id + '">刪除</button>' +
+      '</div>' +
+      note + '</div>';
   }
 
-  /* 月曆（置於學習規劃卡內） */
+  /* 日曆（置於學習規劃卡內）：日／週是一週橫列，月是整個月。
+     兩種刻度共用同一組格子，切換單位時只是行數變多變少，版面不會跳掉。 */
   function calendarInner() {
-    var y = st.calY, m0 = st.calM;
-    var first = new Date(y, m0, 1), lead = (first.getDay() + 6) % 7;
-    var days = new Date(y, m0 + 1, 0).getDate();
-    var cells = [];
-    for (var i = 0; i < lead; i++) cells.push(null);
-    for (var d = 1; d <= days; d++) cells.push(d);
-    while (cells.length % 7) cells.push(null);
     var labels = ['一', '二', '三', '四', '五', '六', '日'];
-    var grid = cells.map(function (d) {
-      if (!d) return '<div class="cal-cell is-out" aria-hidden="true"></div>';
-      var iso = y + '-' + ('0' + (m0 + 1)).slice(-2) + '-' + ('0' + d).slice(-2);
-      var ts = OD.tasksOn(iso);
-      var dots = ts.slice(0, 3).map(function (t) { return '<i style="background:' + dot(OD.subjectHue(t.sid)) + '"></i>'; }).join('');
-      var cls = 'cal-cell' + (iso === OD.today ? ' is-today' : '') + (iso === st.selected ? ' is-selected' : '');
-      return '<button class="' + cls + '" data-action="cal-pick" data-date="' + iso + '">' +
-        '<span class="cal-num">' + d + '</span><span class="cal-dots">' + dots + '</span>' +
-        (ts.length ? '<span class="cal-count">' + ts.length + ' 項</span>' : '') + '</button>';
-    }).join('');
-    var head = '<div class="cal-head"><div class="cal-title">' + y + ' 年 ' + (m0 + 1) + ' 月</div>' +
-      '<div class="row"><button class="btn btn-sm btn-ghost" data-action="cal-prev" aria-label="上個月">‹</button>' +
-      '<button class="btn btn-sm btn-ghost" data-action="cal-next" aria-label="下個月">›</button></div></div>';
-    return '<div class="cal-top" data-od-id="home-calendar">' + head +
+    var cells = st.unit === 'month' ? monthCells() : OD.weekDates(st.selected);
+    return '<div class="cal-top" data-od-id="home-calendar">' +
       '<div class="cal"><div class="cal-dow">' + labels.map(function (l) { return '<span>' + l + '</span>'; }).join('') + '</div>' +
-      '<div class="cal-grid">' + grid + '</div></div>' +
-      '<div class="meta" style="margin-top:10px">點選日期會切換到任務檢視，查看並安排那一天的任務。</div></div>';
+      '<div class="cal-grid">' + cells.map(calCell).join('') + '</div></div>' +
+      '<div class="meta" style="margin-top:10px">點日期就切到那一天，看那天排了什麼。</div></div>';
   }
-
-  /* 本週學習覆蓋 */
-  function coverageCard() {
-    var cov = OD.coverage();
-    var rows = cov.rows.map(function (r) {
-      var pct = r.target ? Math.min(100, Math.round(r.done / r.target * 100)) : 0;
-      return '<div style="margin-bottom:11px"><div class="row-between" style="margin-bottom:5px">' +
-        '<span class="mini">' + OD.esc(r.name) + '</span>' +
-        '<span class="meta">' + r.done + ' / ' + r.target + '</span></div>' +
-        '<div class="bar' + (r.short ? ' warn' : ' ok') + '"><i style="width:' + pct + '%"></i></div></div>';
-    }).join('');
-    return card('本週學習覆蓋', '依每週接觸次數規則統計',
-      '<div class="row-between" style="margin-bottom:14px"><span class="big-num" style="font-size:36px">' + cov.pct + '<span style="font-size:15px">%</span></span>' +
-      '<span class="meta">' + cov.done + ' / ' + cov.target + ' 次</span></div>' + rows,
-      cov.unmet.length ? '<span class="pill pill-warn">' + cov.unmet.length + ' 科待補</span>' : '<span class="pill pill-ok">本週達標</span>');
+  /* 月刻度要補空格，1 號才會落在正確的星期欄 */
+  function monthCells() {
+    var p = OD.parseISO(st.selected), y = p.getFullYear(), m0 = p.getMonth();
+    var lead = (new Date(y, m0, 1).getDay() + 6) % 7, n = OD.monthDays(y, m0 + 1), out = [];
+    for (var i = 0; i < lead; i++) out.push(null);
+    for (var d = 1; d <= n; d++) out.push(OD.iso(new Date(y, m0, d)));
+    while (out.length % 7) out.push(null);
+    return out;
   }
-
-  function upcomingCard() {
-    var list = db.goals.slice().sort(function (a, b) { return a.deadline.localeCompare(b.deadline); }).slice(0, 3);
-    var body = list.map(function (g) {
-      var d = daysLeft(g.deadline);
-      return '<div class="lrow"><span class="grow mini">' + OD.esc(g.title) + '</span>' +
-        '<span class="' + (d <= 14 ? 'pill pill-warn' : 'pill pill-muted') + '">' + (d >= 0 ? d + ' 天' : '逾期') + '</span></div>';
-    }).join('');
-    return card('即將到期', '依截止日排序', body);
+  function calCell(iso) {
+    if (!iso) return '<div class="cal-cell is-out" aria-hidden="true"></div>';
+    var ts = OD.tasksOn(iso);
+    var dots = ts.slice(0, 3).map(function () { return '<i></i>'; }).join('');
+    var cls = 'cal-cell' + (iso === OD.today ? ' is-today' : '') + (iso === st.selected ? ' is-selected' : '');
+    return '<button class="' + cls + '" data-action="cal-pick" data-date="' + iso + '" aria-label="' + OD.fmtDate(iso) + '">' +
+      '<span class="cal-num">' + OD.parseISO(iso).getDate() + '</span>' +
+      '<span class="cal-dots">' + dots + '</span>' +
+      (ts.length ? '<span class="cal-count">' + ts.length + '項</span>' : '') +
+    '</button>';
   }
 
   /* ── 互動 ───────────────────────────────────────────────── */
   OD.on('seg', function (el) { st.view = el.getAttribute('data-view'); render(); });
+  /* 點日期就是「看那一天」：一律切到日刻度，要回週或月再按上面的分段鈕 */
   OD.on('cal-pick', function (el) {
     st.selected = el.getAttribute('data-date');
-    st.view = 'tasks';
-    var dt = OD.parseISO(st.selected); st.calY = dt.getFullYear(); st.calM = dt.getMonth();
+    st.view = 'tasks'; st.unit = 'day';
     render();
   });
-  OD.on('cal-prev', function () { st.calM--; if (st.calM < 0) { st.calM = 11; st.calY--; } render(); });
-  OD.on('cal-next', function () { st.calM++; if (st.calM > 11) { st.calM = 0; st.calY++; } render(); });
   OD.on('date-prev', function () { shift(-1); });
   OD.on('date-next', function () { shift(1); });
+  OD.on('unit', function (el) { st.unit = el.getAttribute('data-unit'); render(); });
   OD.on('date-today', function () { st.selected = OD.today; render(); });
+  /* 移動幅度依瀏覽單位：日 ±1 天、週 ±7 天、月 ±1 個月 */
   function shift(n) {
-    var d = OD.parseISO(st.selected); d.setDate(d.getDate() + n); st.selected = OD.iso(d);
-    st.calY = d.getFullYear(); st.calM = d.getMonth(); render();
+    var d = OD.parseISO(st.selected);
+    if (st.unit === 'month') {
+      var day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + n);
+      /* 1/31 加一個月不該變成 3/3 */
+      d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+    } else {
+      d.setDate(d.getDate() + n * (st.unit === 'week' ? 7 : 1));
+    }
+    st.selected = OD.iso(d); render();
   }
+  /* 勾一項任務就等於回報目標進度，同一個任務紀錄同時驅動目標的進度條；
+     取消勾選會把進度還回去，所以不必再有一顆手動「完成目標」的按鈕。 */
   OD.on('task-toggle', function (el) {
     var t = db.tasks.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
-    if (!t) return; t.done = !t.done; OD.save(); render();
+    if (!t) return;
+    t.done = !t.done;
+    var g = (t.goalId && t.goalAmount) ? OD.goal(t.goalId) : null;
+    if (g) {
+      if (t.goalFrom != null) {
+        /* 週／月目標：勾了代表這一段做完，取消代表退回這一段之前 */
+        g.current = t.done ? Math.min(g.total, t.goalTo) : Math.max(0, t.goalFrom - 1);
+        if (g.weekTarget != null && t.scope === 'week') g.weekDone = t.done ? g.weekTarget : 0;
+      } else {
+        var d = t.done ? t.goalAmount : -t.goalAmount;
+        g.current = Math.max(0, Math.min(g.total, g.current + d));
+        if (g.weekTarget != null) g.weekDone = Math.max(0, Math.min(g.weekTarget, g.weekDone + d));
+      }
+      syncPeriodDone(g);
+    }
+    OD.save(); render();
     OD.toast(t.done ? '已完成：' + t.title : '已取消完成');
   });
   OD.on('task-del', function (el) {
     var id = el.getAttribute('data-id');
-    db.tasks = db.tasks.filter(function (x) { return x.id !== id; }); OD.save(); render(); OD.toast('已刪除任務');
+    var t = db.tasks.filter(function (x) { return x.id === id; })[0];
+    /* 自動排出來的週／月目標刪掉後要留個記號，不然下次重畫又被排回來 */
+    var period = t && t.auto && t.scope !== 'day';
+    if (period) {
+      var g = OD.goal(t.goalId);
+      if (g) { g.dropped = g.dropped || {}; g.dropped[periodKey(t.scope, t.date)] = 1; }
+    }
+    db.tasks = db.tasks.filter(function (x) { return x.id !== id; });
+    OD.save(); render();
+    OD.toast(period ? '已刪除這個' + (t.scope === 'month' ? '月' : '週') + '目標' : '已刪除任務');
   });
   OD.on('journal-add', function () {
     var v = (OD.$('#jText') || {}).value || '';
@@ -355,8 +615,10 @@
 
   /* 新增任務 / 目標 */
   function resetNT() {
-    st.nt.mode = 'time'; st.nt.timeMode = 'slot'; st.nt.slot = null; st.nt.title = '';
+    st.nt.mode = 'time'; st.nt.scope = 'day'; st.nt.timeMode = 'slot'; st.nt.slot = null; st.nt.title = '';
     st.nt.date = null; st.nt.sidName = ''; st.nt.start = '19:00'; st.nt.end = '20:30';
+    st.nt.kind = null; st.nt.editId = null;
+    st.nt.editGoalId = null; st.nt.goal = null;
   }
   OD.on('new-task', function () { resetNT(); openNT(); });
   OD.on('nt-mode', function (el) {
@@ -365,10 +627,33 @@
     refreshNT();
   });
   OD.on('nt-timemode', function (el) { captureNT(); st.nt.timeMode = el.getAttribute('data-tm'); refreshNT(); });
-  OD.on('nt-start', function (el) { st.nt.start = el.value; refreshNT(); });
-  OD.on('nt-end', function (el) { st.nt.end = el.value; refreshNT(); });
-  OD.on('nt-date', function (el) { st.nt.date = el.value; st.nt.slot = null; refreshNT(); });
-  OD.on('nt-slot', function (el) { st.nt.slot = +el.getAttribute('data-s'); refreshNT(); });
+  /* refreshNT 會把整個表單換掉，所以動它之前一定要先把已經打好的字收回 state，
+     否則「名稱打完再挑時段」會把名稱洗掉。 */
+  OD.on('nt-start', function (el) { captureNT(); st.nt.start = el.value; refreshNT(); });
+  OD.on('nt-end', function (el) { captureNT(); st.nt.end = el.value; refreshNT(); });
+  OD.on('nt-date', function (el) { captureNT(); st.nt.date = el.value; st.nt.slot = null; refreshNT(); });
+  OD.on('nt-scope', function (el) {
+    captureNT();
+    st.nt.scope = el.getAttribute('data-scope');
+    st.nt.slot = null;
+    /* 換刻度就把日期歸到那個刻度的起點，週與月才知道自己的範圍 */
+    var base = OD.parseISO(st.nt.date || st.selected);
+    st.nt.date = st.nt.scope === 'week' ? OD.weekStart(OD.iso(base))
+      : st.nt.scope === 'month' ? OD.iso(new Date(base.getFullYear(), base.getMonth(), 1))
+        : OD.iso(base);
+    refreshNT();
+  });
+  OD.on('nt-period', function (el) {
+    captureNT();
+    var d = +el.getAttribute('data-d');
+    var base = OD.parseISO(st.nt.date || st.selected);
+    if ((st.nt.scope || 'day') === 'week') base.setDate(base.getDate() + d * 7);
+    else base = new Date(base.getFullYear(), base.getMonth() + d, 1);
+    st.nt.date = OD.iso(base);
+    st.nt.slot = null;
+    refreshNT();
+  });
+  OD.on('nt-slot', function (el) { captureNT(); st.nt.slot = +el.getAttribute('data-s'); refreshNT(); });
 
   /* 科目選擇器互動 */
   OD.on('subj-menu', function (el) {
@@ -404,8 +689,12 @@
       var title = ((OD.$('#ntTitle') || {}).value || '').trim();
       if (!title) { OD.toast('請輸入任務名稱'); return; }
       var date = (OD.$('#ntDate') || {}).value || st.selected;
+      var scope = st.nt.scope || 'day';
       var start = '', end = '', msg = '已新增任務';
-      if (st.nt.timeMode === 'manual') {
+      if (scope !== 'day') {
+        /* 週與月刻度的任務先不綁時間，等排到日刻度再指定 */
+        msg = scope === 'week' ? '已排進這一週' : '已排進這個月';
+      } else if (st.nt.timeMode === 'manual') {
         start = (OD.$('#ntStart') || {}).value || '';
         end = (OD.$('#ntEnd') || {}).value || '';
         if (start && end && OD.toMin(end) <= OD.toMin(start)) { OD.toast('結束時間需晚於開始時間'); return; }
@@ -414,16 +703,46 @@
         var slot = st.nt.slot;
         if (slot != null) { start = hm(slot); end = hm(slot + 60); msg = '已新增任務，並避開課表時段'; }
       }
-      db.tasks.push({
-        id: OD.uid('k'), date: date, start: start, end: end,
-        sid: OD.ensureSubject((OD.$('#ntSid') || {}).value), title: title,
-        kind: OD.$('#ntKind').value, minutes: +OD.$('#ntMin').value, done: false, type: 'time'
-      });
-      OD.save(); OD.closeModal(); render(); OD.toast(msg);
+      var sid = OD.ensureSubject((OD.$('#ntSid') || {}).value);
+      var kind = OD.$('#ntKind').value;
+      /* 不再問「預估時間」：時段本身就是長度，直接從開始與結束算。
+         週／月刻度的任務不綁時段，就不記長度（清單上也不會多一顆 0 分的標籤）。 */
+      var minutes = (start && end) ? Math.max(0, OD.toMin(end) - OD.toMin(start)) : 0;
+      var editing = db.tasks.filter(function (x) { return x.id === st.nt.editId; })[0];
+      if (editing) {
+        editing.date = date; editing.start = start; editing.end = end;
+        editing.sid = sid; editing.title = title; editing.kind = kind; editing.minutes = minutes;
+        editing.scope = scope;
+        msg = '已更新任務';
+      } else {
+        db.tasks.push({
+          id: OD.uid('k'), date: date, start: start, end: end, scope: scope,
+          sid: sid, title: title, kind: kind, minutes: minutes, done: false, type: 'time'
+        });
+      }
+      OD.save(); OD.closeModal(); st.selected = date; render(); OD.toast(msg);
     } else {
       var gt = (OD.$('#ngTitle') || {}).value || '';
       if (!gt.trim()) { OD.toast('請輸入目標名稱'); return; }
       var mt = db.measureTypes.filter(function (m) { return m.value === OD.$('#ngMeasure').value; })[0];
+      var editingG = OD.goal(st.nt.editGoalId);
+      if (editingG) {
+        var nTotal = Math.max(1, +OD.$('#ngTotal').value || 1);
+        var nWeek = Math.max(1, +OD.$('#ngWeek').value || 1);
+        editingG.title = gt.trim();
+        editingG.sid = OD.ensureSubject((OD.$('#ngSid') || {}).value);
+        editingG.measure = mt.value; editingG.unit = mt.unit;
+        editingG.total = nTotal;
+        editingG.current = Math.min(editingG.current, nTotal);
+        editingG.weekTarget = nWeek;
+        editingG.weekDone = Math.min(editingG.weekDone || 0, nWeek);
+        editingG.weekLabel = '本週 ' + nWeek + ' ' + mt.unit;
+        editingG.deadline = OD.$('#ngDeadline').value || editingG.deadline;
+        /* 還沒做完的週／月目標先丟掉，讓它們照新的設定重排；已經完成的留著當紀錄 */
+        db.tasks = db.tasks.filter(function (t) { return !(t.auto && t.goalId === editingG.id && !t.done); });
+        OD.save(); OD.closeModal(); render(); OD.toast('已更新目標');
+        return;
+      }
       var g = {
         id: OD.uid('g'), title: gt.trim(), sid: OD.ensureSubject((OD.$('#ngSid') || {}).value), measure: mt.value, unit: mt.unit,
         total: Math.max(1, +OD.$('#ngTotal').value || 1), current: 0,
@@ -437,14 +756,19 @@
   });
 
   function openNT() {
+    var editing = !!st.nt.editId, editingGoal = !!st.nt.editGoalId;
     OD.modal({
-      title: '新增任務', sub: '先選擇要用哪種方式完成', wide: true,
-      body: ntBody(), foot: ntFoot()
+      title: editing ? '編輯任務' : editingGoal ? '編輯目標' : '新增任務',
+      sub: (editing || editingGoal) ? '儲存後會直接更新這一筆' : '先選擇要用哪種方式完成',
+      wide: true, body: ntBody(), foot: ntFoot()
     });
   }
   function refreshNT() { var m = OD.$('.modal'); if (!m) return; OD.$('.modal-body', m).innerHTML = ntBody(); OD.$('.modal-foot', m).innerHTML = ntFoot(); }
 
   function ntBody() {
+    /* 編輯既有任務或目標時沒有「換一種方式」這個選項，直接進表單 */
+    if (st.nt.editId) return ntTimeForm();
+    if (st.nt.editGoalId) return ntGoalForm();
     var mode = st.nt.mode;
     var opts = '<div class="opt-list">' +
       ntOpt('time', '安排時程', '指定日期與時段，直接排入行事曆。', mode === 'time') +
@@ -471,10 +795,10 @@
     }
     return html || '<div class="subj-empty">沒有符合的科目，直接輸入即可新增。</div>';
   }
-  function subjField(id, value) {
-    return '<div class="field"><label>科目</label><div class="subj-field">' +
+  function subjField(id, value, hint) {
+    return '<div class="field"><label>科目' + (hint ? '（可留空）' : '') + '</label><div class="subj-field">' +
       '<div class="subj-row">' +
-        '<input class="input subj-input" id="' + id + '" value="' + OD.esc(value || '') + '" placeholder="輸入或選擇科目" autocomplete="off" data-input="subj-filter">' +
+        '<input class="input subj-input" id="' + id + '" value="' + OD.esc(value || '') + '" placeholder="' + (hint || '輸入或選擇科目') + '" autocomplete="off" data-input="subj-filter">' +
         '<button type="button" class="subj-toggle" data-action="subj-menu" aria-label="展開科目清單">' + ICO.chev + '</button>' +
       '</div>' +
       '<div class="subj-menu" hidden>' + subjMenu(value) + '</div>' +
@@ -513,16 +837,56 @@
     var t = OD.$('#ntTitle'); if (t) st.nt.title = t.value;
     var d = OD.$('#ntDate'); if (d) st.nt.date = d.value;
     var s = OD.$('#ntSid'); if (s) st.nt.sidName = s.value;
+    var k = OD.$('#ntKind'); if (k) st.nt.kind = k.value;
+  }
+  /* 安排在哪個刻度：日＝某一天、週＝某一週（幾號到幾號）、月＝某年某月 */
+  var SCOPES = [['day', '日'], ['week', '週'], ['month', '月']];
+  function scopeSeg() {
+    var sc = st.nt.scope || 'day';
+    return '<div class="seg" style="margin-bottom:10px">' + SCOPES.map(function (s) {
+      return '<button type="button" data-action="nt-scope" data-scope="' + s[0] + '"' + (sc === s[0] ? ' class="is-active"' : '') + '>' + s[1] + '</button>';
+    }).join('') + '</div>';
+  }
+  /* 週與月用「往前／往後」挑範圍，換算出來的起日寫進同一個 ntDate 欄位，
+     存檔時三種刻度走同一條路：都只是一筆有日期的任務。 */
+  function scopeField() {
+    var sc = st.nt.scope || 'day';
+    var date = st.nt.date || st.selected;
+    var p = OD.parseISO(date);
+    if (sc === 'day') {
+      return '<input type="date" class="input" id="ntDate" data-change="nt-date" value="' + date + '">' +
+        '<div class="meta" style="margin-top:7px">' + OD.fmtDate(date) + '</div>';
+    }
+    var start = sc === 'week' ? OD.weekStart(date) : OD.iso(new Date(p.getFullYear(), p.getMonth(), 1));
+    var sp = OD.parseISO(start), w = OD.weekDates(start);
+    var label = sc === 'week'
+      ? OD.fmtDateShort(w[0]) + '（一）– ' + OD.fmtDateShort(w[6]) + '（日）'
+      : sp.getFullYear() + ' 年 ' + (sp.getMonth() + 1) + ' 月';
+    return '<div class="row" style="gap:8px">' +
+        '<button type="button" class="btn btn-sm btn-ghost period-nav" data-action="nt-period" data-d="-1" aria-label="往前一個">‹</button>' +
+        '<span class="grow" style="text-align:center;font-weight:600">' + label + '</span>' +
+        '<button type="button" class="btn btn-sm btn-ghost period-nav" data-action="nt-period" data-d="1" aria-label="往後一個">›</button>' +
+      '</div>' +
+      '<input type="hidden" id="ntDate" value="' + start + '">' +
+      '<div class="meta" style="margin-top:7px">' +
+        (sc === 'week' ? '任務屬於這一週，' : '任務屬於這個月，') + '日曆上記在 ' + OD.fmtDate(start) + '</div>';
   }
   function ntTimeForm() {
     var date = st.nt.date || st.selected;
+    var sc = st.nt.scope || 'day';
     return '<div class="form-grid">' +
       '<div class="field span-2"><label>任務名稱</label><input class="input" id="ntTitle" value="' + OD.esc(st.nt.title) + '" placeholder="例如：線性代數 Chapter 4 練習"></div>' +
-      subjField('ntSid', st.nt.sidName) +
-      '<div class="field"><label>任務類型</label><select class="select" id="ntKind">' + KINDS.map(function (k) { return '<option>' + k + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><label>日期</label><input type="date" class="input" id="ntDate" data-change="nt-date" value="' + date + '"></div>' +
-      '<div class="field"><label>預估時間</label><select class="select" id="ntMin">' + [40, 60, 90, 120].map(function (m) { return '<option' + (m === 90 ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field span-2"><label>安排時段</label>' + timeSection(date) + '</div>' +
+      subjField('ntSid', st.nt.sidName, '輸入或選擇科目，一般事務可留空') +
+      '<div class="field"><label>任務類型</label><select class="select" id="ntKind">' + KIND_GROUPS.map(function (g) {
+        return '<optgroup label="' + g[0] + '">' + g[1].map(function (k) {
+          return '<option' + (k === st.nt.kind ? ' selected' : '') + '>' + k + '</option>';
+        }).join('') + '</optgroup>';
+      }).join('') + '</select></div>' +
+      '<div class="field span-2"><label>安排在哪個刻度</label>' + scopeSeg() + scopeField() + '</div>' +
+      (sc === 'day'
+        ? '<div class="field span-2"><label>安排時段</label>' + timeSection(date) + '</div>'
+        : '<div class="field span-2"><div class="avoid-note">' + ICO.shield +
+          (sc === 'week' ? '這一週' : '這個月') + '的任務不綁時段，先排進日曆，等排到日刻度再指定時間。</div></div>') +
       '</div>';
   }
   function slotPicker(date, sel) {
@@ -541,15 +905,20 @@
     return '<div class="avoid-note" style="margin-top:9px">' + ICO.shield + txt + '</div>';
   }
   function ntGoalForm() {
+    /* 編輯既有目標時，欄位先帶入原本的值 */
+    var e = st.nt.goal || {};
+    var mt = db.measureTypes.filter(function (m) { return m.value === (e.measure || 'chapters'); })[0] || db.measureTypes[0];
+    var edit = !!st.nt.editGoalId;
     return '<div class="form-grid">' +
-      '<div class="field span-2"><label>目標名稱</label><input class="input" id="ngTitle" placeholder="例如：完成線性代數 Chapter 1–6"></div>' +
-      subjField('ngSid', '') +
-      '<div class="field"><label>衡量方式</label><select class="select" id="ngMeasure" data-change="ng-measure">' + db.measureTypes.map(function (m) { return '<option value="' + m.value + '">' + m.label + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><label>目標總量</label><input class="input" type="number" min="1" id="ngTotal" value="6"></div>' +
-      '<div class="field"><label>每週目標</label><input class="input" type="number" min="1" id="ngWeek" value="2"></div>' +
-      '<div class="field"><label>截止日</label><input type="date" class="input" id="ngDeadline" value="' + OD.iso(new Date(OD.parseISO(OD.today).getTime() + 56 * 86400000)) + '"></div>' +
-      '<div class="field"><label>單位</label><input class="input" id="ngUnit" value="Chapters" disabled></div>' +
-      '</div><div class="meta" style="margin-top:10px">建立後會依每週目標自動拆解成每日任務，並避開你的課表時段。</div>';
+      '<div class="field span-2"><label>目標名稱</label><input class="input" id="ngTitle" value="' + OD.esc(e.title || '') + '" placeholder="例如：完成線性代數 Chapter 1–6"></div>' +
+      subjField('ngSid', e.sidName || '') +
+      '<div class="field"><label>衡量方式</label><select class="select" id="ngMeasure" data-change="ng-measure">' + db.measureTypes.map(function (m) { return '<option value="' + m.value + '"' + (m.value === mt.value ? ' selected' : '') + '>' + m.label + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label>目標總量</label><input class="input" type="number" min="1" id="ngTotal" value="' + (e.total || 6) + '"></div>' +
+      '<div class="field"><label>每週目標</label><input class="input" type="number" min="1" id="ngWeek" value="' + (e.week || 2) + '"></div>' +
+      '<div class="field"><label>截止日</label><input type="date" class="input" id="ngDeadline" value="' + (e.deadline || OD.iso(new Date(OD.parseISO(OD.today).getTime() + 56 * 86400000))) + '"></div>' +
+      '<div class="field"><label>單位</label><input class="input" id="ngUnit" value="' + OD.esc(mt.unit) + '" disabled></div>' +
+      '</div><div class="meta" style="margin-top:10px">' +
+        (edit ? '已經完成的進度不會被重算，本週／本月目標會依新的設定重新排。' : '建立後會依每週目標自動拆解成每日任務，並避開你的課表時段。') + '</div>';
   }
   OD.on('ng-measure', function (el) {
     var mt = db.measureTypes.filter(function (m) { return m.value === el.value; })[0];
@@ -557,7 +926,8 @@
   });
   function ntFoot() {
     return '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
-      '<button class="btn btn-primary" data-action="nt-save">' + (st.nt.mode === 'time' ? '建立任務' : '建立目標並拆解') + '</button>';
+      '<button class="btn btn-primary" data-action="nt-save">' +
+      (st.nt.editId || st.nt.editGoalId ? '儲存變更' : (st.nt.mode === 'time' ? '建立任務' : '建立目標並拆解')) + '</button>';
   }
 
   /* 拆解目標 → 每日任務 */
@@ -605,100 +975,27 @@
       db.tasks.push({
         id: OD.uid('k'), date: it.date, start: slot != null ? hm(slot) : '', end: slot != null ? hm(slot + 60) : '',
         sid: g.sid, title: g.title + ' · ' + it.amount + ' ' + g.unit, kind: it.kind,
-        minutes: 90, done: false, type: 'time', goalId: g.id
+        minutes: slot != null ? 60 : 0, done: false, type: 'time', goalId: g.id, goalAmount: it.amount
       });
     });
     OD.save(); OD.closeModal(); render(); OD.toast('已建立 ' + plan.items.length + ' 個任務');
   });
 
-  /* 完成目標（記錄進度） */
-  OD.on('goal-progress', function (el) {
-    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
-    OD.modal({
-      title: '完成目標進度', sub: OD.esc(g.title), body:
-        '<div class="row-between"><span class="mini">目前進度</span><b class="num">' + g.current + ' / ' + g.total + ' ' + g.unit + '</b></div>' +
-        '<div class="bar"><i style="width:' + Math.min(100, g.current / g.total * 100) + '%"></i></div>' +
-        '<div class="field"><label>本次完成數量（' + g.unit + '）</label><input class="input" type="number" min="1" id="gpAmt" value="1"></div>',
-      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
-            '<button class="btn btn-primary" data-action="goal-progress-save" data-id="' + g.id + '">記錄進度</button>'
-    });
-  });
-  OD.on('goal-progress-save', function (el) {
-    var g = OD.goal(el.getAttribute('data-id')); if (!g) return;
-    var amt = Math.max(1, +OD.$('#gpAmt').value || 1);
-    g.current = Math.min(g.total, g.current + amt);
-    if (g.weekTarget != null) g.weekDone = Math.min(g.weekTarget, g.weekDone + amt);
-    OD.save(); OD.closeModal(); render();
-    OD.toast(g.current >= g.total ? '目標達成：' + g.title : '已記錄進度');
-  });
+  /* 目標進度不再靠一顆「完成目標」按鈕手動回報：
+     勾任務的時候就一起把進度往前推，見下面的 task-toggle。 */
 
-  /* 安排時程（既有任務） */
-  OD.on('task-schedule', function (el) {
+  /* 編輯既有任務：沿用「新增任務」的表單，欄位先帶入原本的值 */
+  OD.on('task-edit', function (el) {
     var t = db.tasks.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!t) return;
-    st.sch = { id: t.id, date: t.date, slot: t.start ? OD.toMin(t.start) : null };
-    openSch();
-  });
-  function openSch() {
-    OD.modal({
-      title: '安排時程', sub: '系統會列出避開課表後的空檔', wide: true, body: schBody(),
-      foot: '<button class="btn btn-secondary" data-action="modal-close">取消</button>' +
-            '<button class="btn btn-primary" data-action="sch-confirm">確定安排</button>'
-    });
-  }
-  function schBody() {
-    var t = db.tasks.filter(function (x) { return x.id === st.sch.id; })[0];
-    var cls = classesOn(st.sch.date);
-    var busy = cls.map(function (c) {
-      return '<div class="lrow"><span class="row" style="gap:9px"><span class="subject-dot lg" style="background:' + dot(250) + '"></span>' +
-        '<b style="font-size:13.5px">' + OD.esc(c.name) + '</b><span class="tag">課表</span></span>' +
-        '<span class="meta">' + c.start + ' – ' + c.end + '</span></div>';
-    }).join('') || '<div class="empty" style="padding:10px">這天沒有課表時段。</div>';
-    var slots = freeSlots(st.sch.date);
-    var pick = slots.length
-      ? '<div class="grid-3">' + slots.map(function (s) {
-          return '<button class="opt' + (st.sch.slot === s.start ? ' is-active' : '') + '" data-action="sch-slot" data-s="' + s.start + '" style="padding:10px 12px">' +
-            '<span class="opt-mark"></span><span class="opt-k num">' + hm(s.start) + ' – ' + hm(s.end) + '</span></button>';
-        }).join('') + '</div>'
-      : '<div class="empty">這天已無 60 分鐘以上的空檔。</div>';
-    return '<div class="field"><label>任務</label><div class="card" style="padding:12px 14px"><b>' + OD.esc(t.title) + '</b>' +
-        '<div class="meta">' + OD.subjectName(t.sid) + ' · ' + t.minutes + ' 分</div></div></div>' +
-      '<div class="field"><label>日期</label><input type="date" class="input" value="' + st.sch.date + '" data-change="sch-date"></div>' +
-      '<div class="field"><label>課表時段（不可安排）</label>' + busy + '</div>' +
-      '<div class="field"><label>可安排空檔</label>' + pick + '</div>' +
-      (cls.length ? '<div class="avoid-note">' + ICO.shield + '已避開課表時段</div>' : '');
-  }
-  OD.on('sch-date', function (el) { st.sch.date = el.value; st.sch.slot = null; var m = OD.$('.modal-body'); if (m) m.innerHTML = schBody(); });
-  OD.on('sch-slot', function (el) { st.sch.slot = +el.getAttribute('data-s'); var m = OD.$('.modal-body'); if (m) m.innerHTML = schBody(); });
-  OD.on('sch-confirm', function () {
-    if (st.sch.slot == null) { OD.toast('請選擇一個空檔'); return; }
-    var t = db.tasks.filter(function (x) { return x.id === st.sch.id; })[0]; if (!t) return;
-    t.date = st.sch.date; t.start = hm(st.sch.slot); t.end = hm(st.sch.slot + 60);
-    OD.save(); OD.closeModal(); st.selected = t.date; render(); OD.toast('已安排時程，並避開課表時段');
-  });
-
-  /* 展示流程 */
-  OD.on('demo-flow', function () {
-    var steps = [
-      ['首頁', '預設顯示日誌；切到任務後點月曆日期即可安排當天任務。', 'index.html'],
-      ['語音輸入', '點右下角麥克風，停止轉文字後會顯示任務建議，勾選後按「加入任務並放入文字框」即可同時建立任務與放入內容。', 'index.html'],
-      ['修課與畢業', '模擬匯入成績單，檢查畢業學分缺口。', 'courses.html'],
-      ['學習歷程', '新增一筆成果，從已修課程中選擇對應課程。', 'achievements.html'],
-      ['能力診斷', '檢視能力分數與能力證據，找出相對強項與待補強。', 'diagnosis.html'],
-      ['職涯探索', '依能力輪廓查看可能方向與能力缺口，找出還需要補強的能力。', 'explore.html'],
-      ['學習資源', '把能力缺口對應的資源加入學習目標，自動拆解成任務。', 'resources.html'],
-      ['簡歷', '切換求職版／升學版，預覽自動整理的簡歷。', 'resume.html'],
-      ['年度回顧', '檢視 2026 的學習數據總結。', 'recap.html']
-    ];
-    OD.modal({
-      title: '展示流程', sub: '建議的 Demo 動線', body:
-        '<div class="tl">' + steps.map(function (s, i) {
-          return '<div class="tl-item"><div class="tl-time num">' + ('0' + (i + 1)).slice(-2) + '</div>' +
-            '<div class="tl-body"><div class="row-between"><b>' + s[0] + '</b>' +
-            '<a class="btn btn-sm btn-secondary" href="' + s[2] + '">前往</a></div>' +
-            '<div class="meta">' + s[1] + '</div></div></div>';
-        }).join('') + '</div>',
-      foot: '<button class="btn btn-primary" data-action="modal-close">開始</button>'
-    });
+    resetNT();
+    st.nt.editId = t.id; st.nt.mode = 'time'; st.nt.scope = t.scope || 'day';
+    st.nt.title = t.title; st.nt.sidName = OD.subjectName(t.sid);
+    st.nt.kind = t.kind;
+    st.nt.date = t.date; st.nt.slot = null;
+    /* 已經有時段的任務走手動模式，存檔時才不會被空檔規則改掉原本的時間 */
+    st.nt.timeMode = t.start ? 'manual' : 'slot';
+    if (t.start) { st.nt.start = t.start; st.nt.end = t.end || hm(OD.toMin(t.start) + 60); }
+    openNT();
   });
 
   /* 語音 FAB 在此頁改成開啟「新增任務」 */

@@ -149,6 +149,15 @@ window.OD_MOCK = {
   },
   today: '2026-09-23',
 
+  /* ── 任務類型（新增／編輯任務的分組選單） ─────────────────
+     任務不只讀書：請老師寫推薦信、寫專題文件也是一件要排進時程的事，
+     所以分成「學習」與「一般事務」兩組。前五個學習類別不能動，
+     拆解目標時會自動寫入「理解」「練習」。 */
+  taskKindGroups: [
+    ['學習', ['理解', '練習', '複習', '回想', '測驗']],
+    ['一般事務', ['撰寫', '聯繫', '申請', '準備', '其他']]
+  ],
+
   /* ── 任務（時間型 + 目標型） ────────────────────────────── */
   tasks: [
     { id: 'k1', date: '2026-09-21', start: '10:00', end: '11:30', sid: 'lin',  title: '第四章 向量空間 理解', kind: '理解', minutes: 90, done: true,  type: 'time', goalId: 'g1' },
@@ -156,7 +165,7 @@ window.OD_MOCK = {
     { id: 'k3', date: '2026-09-22', start: '08:30', end: '09:30', sid: 'os',   title: 'Chapter 1 複習',       kind: '複習', minutes: 60, done: true,  type: 'time' },
     { id: 'k4', date: '2026-09-22', start: '20:00', end: '20:40', sid: 'eng',  title: '閱讀測驗 2 篇',         kind: '練習', minutes: 40, done: true,  type: 'time' },
     { id: 'k5', date: '2026-09-23', start: '09:00', end: '10:30', sid: 'ds',   title: 'Queue 與 Stack 練習',  kind: '練習', minutes: 90, done: false, type: 'time' },
-    { id: 'k6', date: '2026-09-23', start: '14:00', end: '15:30', sid: 'lin',  title: '線性代數 Chapter 4',   kind: '理解', minutes: 90, done: false, type: 'time', goalId: 'g1' },
+    { id: 'k6', date: '2026-09-23', start: '14:00', end: '15:30', sid: 'lin',  title: '線性代數 Chapter 4',   kind: '理解', minutes: 90, done: false, type: 'time', goalId: 'g1', goalAmount: 1 },
     { id: 'k7', date: '2026-09-23', start: '19:00', end: '20:00', sid: 'algo', title: '演算法題目 10 題',     kind: '練習', minutes: 60, done: false, type: 'time' },
     { id: 'k8', date: '2026-09-24', start: '09:00', end: '10:00', sid: 'lin',  title: 'Chapter 4 回想測驗',   kind: '回想', minutes: 60, done: false, type: 'time', goalId: 'g1' },
     { id: 'k9', date: '2026-09-25', start: '19:00', end: '20:30', sid: 'algo', title: '圖論演算法 練習',      kind: '練習', minutes: 90, done: false, type: 'time' },
@@ -168,7 +177,11 @@ window.OD_MOCK = {
     { id: 'k15', date: '2026-09-11', start: '19:00', end: '20:30', sid: 'os',  title: '行程與執行緒 複習',    kind: '複習', minutes: 90, done: true,  type: 'time' },
     { id: 'k16', date: '2026-09-09', start: '20:00', end: '21:00', sid: 'algo', title: '分治法 回想',          kind: '回想', minutes: 60, done: true,  type: 'time' },
     { id: 'k17', date: '2026-09-08', start: '09:00', end: '10:00', sid: 'eng',  title: '閱讀測驗 3 篇',        kind: '練習', minutes: 60, done: true,  type: 'time' },
-    { id: 'k18', date: '2026-09-04', start: '15:00', end: '16:00', sid: 'lin', title: '第二章 矩陣運算 測驗',  kind: '測驗', minutes: 60, done: true,  type: 'time' }
+    { id: 'k18', date: '2026-09-04', start: '15:00', end: '16:00', sid: 'lin', title: '第二章 矩陣運算 測驗',  kind: '測驗', minutes: 60, done: true,  type: 'time' },
+    /* 不是讀書的事也要排進時程：沒有科目，類型走「一般事務」那一組 */
+    { id: 'k19', date: '2026-09-18', start: '14:00', end: '15:00', sid: '',    title: '請老師寫推薦信',       kind: '聯繫', minutes: 60, done: true,  type: 'time' },
+    { id: 'k20', date: '2026-09-19', start: '20:00', end: '21:30', sid: '',    title: '專題文件撰寫',         kind: '撰寫', minutes: 90, done: true,  type: 'time' },
+    { id: 'k21', date: '2026-09-24', start: '16:00', end: '17:00', sid: '',    title: '送交專題初稿',         kind: '申請', minutes: 60, done: false, type: 'time' }
   ],
 
   /* ── 學習目標（目標型任務） ─────────────────────────────── */
@@ -347,6 +360,30 @@ window.OD_MOCK = {
       } }
   ],
 
+  /* ── 推薦之外的機會：不掛在任何職涯方向底下 ───────────────
+     上面的 resources 是比對能力缺口後推出來的，這裡是推不出來但值得自己逛的。
+     用 field（領域）而不是 careerDirection 分類，因為它們本來就沒對到你的方向。 */
+  opportunities: [
+    { id: 'o1',  type: 'course',   field: '資料分析',   name: '機率與統計（二）',     provider: '資工系',       meta: '下學期 · 3 學分', note: '想往資料走，這門是後面的底子' },
+    { id: 'o2',  type: 'course',   field: '人工智慧',   name: '人工智慧導論',         provider: '資工系',       meta: '下學期 · 3 學分', note: 'AI 應用的入門課，作業偏實作' },
+    { id: 'o3',  type: 'course',   field: '人工智慧',   name: '數位影像處理',         provider: '資工系',       meta: '下學期 · 3 學分', note: '影像相關的專題會用到' },
+    { id: 'o4',  type: 'course',   field: '商管',       name: '行銷管理',             provider: '管理學院',     meta: '下學期 · 3 學分', note: '想補商業語言可以修' },
+    { id: 'o5',  type: 'course',   field: '設計',       name: '視覺傳達設計概論',     provider: '設計學院',     meta: '下學期 · 2 學分', note: '非本科也能修的設計入門' },
+    { id: 'o6',  type: 'activity', field: '系統與網路', name: '開源社群聚會',         provider: '學生社群',     meta: '每月第一個週四',  note: '認識業界工程師的場合' },
+    { id: 'o7',  type: 'activity', field: '跨域',       name: '英語簡報讀書會',       provider: '語言中心',     meta: '每週五 18:30',    note: '練口說也練台風' },
+    { id: 'o8',  type: 'activity', field: '設計',       name: '設計思考工作聚',       provider: '創新中心',     meta: '隔週一次',        note: '跨系分組解真實問題' },
+    { id: 'o9',  type: 'contest',  field: '系統與網路', name: '全國大專程式競賽',     provider: '教育部',       meta: '10 月報名',       note: '演算法實力的客觀指標' },
+    { id: 'o10', type: 'contest',  field: '人工智慧',   name: 'AI 應用創新競賽',      provider: '科技部',       meta: '11 月報名',       note: '可以帶著現成的專題去報' },
+    { id: 'o11', type: 'contest',  field: '商管',       name: '大專院校行銷企劃賽',   provider: '管理學院',     meta: '12 月報名',       note: '吃簡報與敘事能力' },
+    { id: 'o12', type: 'workshop', field: '系統與網路', name: 'Git 與協作流程工作坊', provider: '計算機中心',   meta: '半日',            note: '做專題前先補起來' },
+    { id: 'o13', type: 'workshop', field: '資料分析',   name: '資料視覺化實作',       provider: '圖書館',       meta: '週末 1 日',       note: '把分析結果講清楚' },
+    { id: 'o14', type: 'workshop', field: '跨域',       name: '簡報敘事工作坊',       provider: '職涯中心',     meta: '半日',            note: '成果發表前很受用' },
+    { id: 'o15', type: 'online',   field: '人工智慧',   name: '機器學習基礎',         provider: '線上課程平台', meta: '約 24 小時',      note: '有微積分與統計底子再修' },
+    { id: 'o16', type: 'online',   field: '資料分析',   name: 'SQL 進階查詢',         provider: '線上課程平台', meta: '約 10 小時',      note: '資料庫課的延伸' },
+    { id: 'o17', type: 'online',   field: '系統與網路', name: '資訊安全概論',         provider: '線上課程平台', meta: '約 15 小時',      note: '跨領域的敲門磚' },
+    { id: 'o18', type: 'online',   field: '設計',       name: 'UI/UX 設計基礎',       provider: '線上課程平台', meta: '約 12 小時',      note: '做專題介面用得上' }
+  ],
+
   /* ── 推薦理由用的 AI 免責文案（避免宣稱真正 AI 判斷） ───── */
   aiDisclaimer: '以上為依目前輸入的學習歷程與成果整理的初步分析，非心理測驗或正式能力評量結果。',
 
@@ -413,6 +450,7 @@ window.OD_MOCK = {
     skills: 'skills',
     skillEvidence: 'skill_evidence',
     careerDirections: 'career_directions',
-    resources: 'learning_resources'
+    resources: 'learning_resources',
+    opportunities: 'learning_resources (推薦之外，未掛職涯方向)'
   }
 };

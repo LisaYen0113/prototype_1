@@ -69,7 +69,8 @@
   var db = OD.db;
   var ICO = {
     print: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="4" y="9" width="16" height="7" rx="2"/><path d="M7 14h10v7H7z"/></svg>',
-    eye: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+    eye: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    word: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m8.5 12.5 1.2 4 1.8-3.2 1.8 3.2 1.2-4"/></svg>'
   };
   var MODE = { job: db.resumeModes[0], grad: db.resumeModes[1] };
   var SUMMARY = {
@@ -96,7 +97,8 @@
   OD.appbar({
     title: '簡歷',
     sub: '依你的修課、成果與能力自動帶入，可切換求職與升學兩種版本',
-    actions: '<button class="btn btn-secondary no-print" data-action="resume-print">' + ICO.print + '匯出 PDF</button>'
+    actions: '<button class="btn btn-secondary no-print" data-action="resume-print">' + ICO.print + '匯出 PDF</button>' +
+      '<button class="btn btn-secondary no-print" data-action="resume-word">' + ICO.word + '匯出 WORD</button>'
   });
 
   /* ── 上方控制列 ─────────────────────────────────────────── */
@@ -239,6 +241,102 @@
   }
   function renderSheet() { var w = OD.$('#sheetWrap'); if (w) w.innerHTML = sheet(); }
 
+  /* ── 匯出 Word ───────────────────────────────────────────────
+     Word 讀得懂 HTML，但不支援 flex，也不認 oklch()。所以匯出的不是「畫面原封
+     搬過去」，而是同一份內容換一套 Word 聽得懂的排版：兩欄的橫列改成表格，
+     顏色從主題變數換算成 hex。內容還是畫面上那一份，不另外拼一份，
+     否則以後改了簡歷，Word 檔會偷偷留在舊版。 */
+  /* 主題的六個 token 是 oklch()，Word 不認；借 canvas 把它正規化成 #rrggbb */
+  function hexOf(name, fallback) {
+    try {
+      var raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      var ctx = document.createElement('canvas').getContext('2d');
+      ctx.fillStyle = '#000000';
+      ctx.fillStyle = raw;
+      return /^#[0-9a-f]{6}$/i.test(ctx.fillStyle) ? ctx.fillStyle : fallback;
+    } catch (e) { return fallback; }
+  }
+  /* 把一列兩欄的 flex 橫列換成 Word 排得出來的表格；class 帶著走，樣式才接得上 */
+  function deFlexTable(el) {
+    var t = document.createElement('table');
+    t.className = el.className;
+    t.setAttribute('width', '100%');
+    t.setAttribute('cellpadding', '0');
+    t.setAttribute('cellspacing', '0');
+    t.setAttribute('border', '0');
+    t.setAttribute('style', 'border-collapse:collapse');
+    var tr = document.createElement('tr');
+    [].slice.call(el.children).forEach(function (kid, i) {
+      var td = document.createElement('td');
+      td.className = kid.className || '';
+      td.setAttribute('valign', 'top');
+      if (kid.getAttribute('style')) td.setAttribute('style', kid.getAttribute('style'));
+      if (i) td.setAttribute('align', 'right');
+      while (kid.firstChild) td.appendChild(kid.firstChild);
+      tr.appendChild(td);
+    });
+    t.appendChild(tr);
+    return t;
+  }
+  /* 版型只差在標題顏色與分隔線，跟畫面上的 tpl-classic／modern／minimal 對應 */
+  function wordCss() {
+    var accent = hexOf('--accent', '#3b6ff0'), fg = hexOf('--fg', '#1c1c1e');
+    var muted = hexOf('--muted', '#6b7280'), border = hexOf('--border', '#e5e5ea');
+    var t = st.template;
+    var head = t === 'modern' ? accent : fg;
+    var sec = t === 'modern' ? accent : (t === 'minimal' ? muted : fg);
+    var rule = t === 'minimal' ? '0' : '1px solid ' + (t === 'modern' ? accent : border);
+    return '@page{ size:A4; margin:1.5cm 1.7cm; }' +
+      'body{ font-family:"Microsoft JhengHei","微軟正黑體",PMingLiU,sans-serif; font-size:10.5pt; line-height:1.6; color:' + fg + '; }' +
+      '.r-head td{ border-bottom:2px solid ' + head + '; padding-bottom:7pt; }' +
+      '.r-name{ font-size:21pt; font-weight:bold; color:' + head + '; }' +
+      '.r-role{ font-size:11pt; color:' + muted + '; margin-top:2pt; }' +
+      '.r-contact{ font-size:9.5pt; color:' + muted + '; line-height:1.5; }' +
+      '.r-contact b{ color:' + fg + '; }' +
+      '.r-sec{ margin-top:13pt; }' +
+      '.r-sec h3{ font-size:12pt; color:' + sec + '; margin:0 0 5pt; padding-bottom:3pt; border-bottom:' + rule + '; }' +
+      '.r-item td{ padding:5pt 0; border-bottom:1px solid ' + border + '; }' +
+      '.r-item h4{ font-size:10.5pt; margin:0; }' +
+      '.r-item .r-sub{ font-size:9.5pt; color:' + muted + '; }' +
+      '.r-item p{ font-size:9.5pt; color:' + muted + '; margin:2pt 0 0; }' +
+      '.r-body p{ font-size:10.5pt; margin:0; }' +
+      '.r-when{ font-size:9.5pt; color:' + muted + '; white-space:nowrap; }' +
+      '.tag{ font-size:9pt; padding:1pt 5pt; margin-right:3pt; border:1px solid ' + border + '; }' +
+      '.meta{ font-size:9.5pt; color:' + muted + '; }';
+  }
+  function exportWord() {
+    var node = OD.$('#sheetWrap') && OD.$('#sheetWrap').querySelector('.sheet');
+    if (!node) return;
+    var copy = node.cloneNode(true);
+    [].slice.call(copy.querySelectorAll('.r-body p')).forEach(function (p) {
+      p.innerHTML = p.innerHTML.replace(/\n/g, '<br>');
+    });
+    /* 從最內層開始換，換完的表格不會再被外層的查詢撈到 */
+    [].slice.call(copy.querySelectorAll('.r-item, .r-head')).forEach(function (el) {
+      if (el.parentNode) el.parentNode.replaceChild(deFlexTable(el), el);
+    });
+    var who = db.resumeProfile.name || db.student.name || '簡歷';
+    var title = '簡歷 · ' + who + (st.mode === 'grad' ? '（升學版）' : '（求職版）');
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+      'xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+      '<head><meta charset="utf-8"><title>' + esc(title) + '</title>' +
+      '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom>' +
+      '<w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->' +
+      '<style>' + wordCss() + '</style></head><body>' + copy.outerHTML + '</body></html>';
+    /* 前面補 BOM（用 fromCharCode 寫，不要在原始碼裡放看不見的字元），
+       少了它 Word 會把中文讀成亂碼 */
+    var blob = new Blob([String.fromCharCode(0xfeff) + html], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = title.replace(' · ', '-') + '.doc';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    OD.toast('已下載 Word 檔：' + a.download + '（可用 Word 直接開啟編輯）');
+  }
+
   /* ── 互動 ───────────────────────────────────────────────── */
   OD.on('resume-mode', function (el) {
     var m = el.getAttribute('data-mode'); if (m === st.mode) return;
@@ -246,6 +344,7 @@
     render();
   });
   OD.on('resume-print', function () { OD.toast('已準備列印版；正式版將匯出 PDF'); setTimeout(function () { window.print(); }, 350); });
+  OD.on('resume-word', exportWord);
   OD.on('resume-target', function (el) { st.target = el.value; renderSheet(); });
   OD.on('resume-summary', function (el) { st.summary = el.value; renderSheet(); });
   OD.on('resume-gpa', function (el) { st.showGpa = el.checked; renderSheet(); });

@@ -49,7 +49,6 @@
     return '<section class="card" data-od-id="' + OD.slug(title) + '"><div class="card-head"><div><div class="card-title">' + title + '</div>' +
       (sub ? '<div class="card-sub">' + sub + '</div>' : '') + '</div>' + (actions || '') + '</div>' + body + '</section>';
   }
-  function kpi(v, k) { return '<div class="kpi-card"><div class="v num">' + v + '</div><div class="k">' + k + '</div></div>'; }
   function semCredits(sem) { return OD.creditsOf(function (c) { return c.semester === sem; }); }
   function semGpa(sem) {
     var pts = 0, cr = 0;
@@ -86,18 +85,7 @@
              '<button class="btn btn-primary" data-action="add-course">' + ICO.plus + '新增修課</button>'
   });
 
-  function render() { OD.$('#content').innerHTML = '<div class="split">' + leftCol() + rightCol() + '</div>' + records() + kpis(); }
-
-  /* ── KPI ────────────────────────────────────────────────── */
-  function kpis() {
-    var g = OD.graduation();
-    var missing = Math.max(0, g.totalNeed - g.earned);
-    return '<div class="grid-4" style="margin-top:22px">' +
-      kpi(g.earned + ' <small>/ ' + g.totalNeed + '</small>', '已修學分') +
-      kpi(OD.gpa().toFixed(2), '平均等第（GPA 4.3 制）') +
-      kpi(semCredits(db.currentSemester) + ' <small>學分</small>', db.currentSemester + ' 修課學分') +
-      kpi(missing + ' <small>學分</small>', '距離畢業尚缺') + '</div>';
-  }
+  function render() { OD.$('#content').innerHTML = '<div class="split">' + leftCol() + rightCol() + '</div>' + records(); }
 
   /* ── 左：畢業學分檢核 ───────────────────────────────────── */
   function leftCol() {
@@ -201,11 +189,24 @@
         }
       });
     }
+    /* 手機用：同一個課表改成一週五天直著排，左右不必拉。
+       桌機看不到這份，兩份都存在 DOM 裡，由 CSS 決定顯示哪一份。 */
+    var byDay = days.map(function (d) {
+      var items = list.filter(function (t) { return t.day === d; })
+        .sort(function (a, b) { return OD.toMin(a.start) - OD.toMin(b.start); });
+      if (!items.length) return '';
+      return '<div class="tt-day"><div class="tt-day-name">' + names[d - 1] + '</div>' +
+        items.map(function (t) {
+          return '<button class="tt-class" data-action="tt-class" data-id="' + t.id + '" data-sem="' + OD.esc(sem) + '">' +
+            '<b>' + OD.esc(t.name) + '</b><span>' + t.start + '–' + t.end + (t.room ? ' · ' + OD.esc(t.room) : '') + '</span></button>';
+        }).join('') + '</div>';
+    }).join('');
     var cap = sem === db.currentSemester
       ? '課表 · ' + list.length + ' 個時段（安排學習任務時會自動避開）'
       : '課表 · ' + list.length + ' 個時段';
     return '<div class="tt-embed"><div class="tt-embed-cap">' + cap + '</div>' +
-      '<div class="tt is-compact">' + head + rows + '</div></div>';
+      '<div class="tt is-compact">' + head + rows + '</div>' +
+      '<div class="tt-days">' + (byDay || '<div class="meta">這學期沒有課表時段。</div>') + '</div></div>';
   }
 
   /* ── 互動：篩選 ─────────────────────────────────────────── */

@@ -252,32 +252,13 @@
   ];
   var NAV_PARENT = { diagnosis: 'achievements', explore: 'achievements', resource: 'achievements' };
   function navActive(id) { return OD.page === id || NAV_PARENT[OD.page] === id; }
-  function navCounts() {
-    var remainingToday = OD.tasksOn(OD.today).filter(function (t) { return !t.done; }).length;
-    var g = OD.graduation();
-    var resCount = 0;
-    db.careerDirections.forEach(function (d) {
-      Object.keys(d.resources || {}).forEach(function (k) { resCount += d.resources[k].length; });
-    });
-    return {
-      home: remainingToday ? remainingToday + ' 項' : '完成',
-      courses: g.earned + ' / ' + g.totalNeed,
-      achievements: db.achievements.length + ' 項',
-      diagnosis: db.skills.length + ' 項',
-      explore: db.careerDirections.length + ' 個',
-      resource: resCount + ' 項',
-      resume: '2 版',
-      recap: '2026'
-    };
-  }
   OD.renderSidebar = function () {
     var host = OD.$('#sidebar'); if (!host) return;
-    var counts = navCounts();
     var s = db.student;
     function item(n, sub) {
       return '<a class="nav-item' + (sub ? ' nav-sub' : '') + '" href="' + n.href + '"' + (navActive(n.id) ? ' aria-current="page"' : '') + ' data-od-id="nav-' + n.id + '">' +
         '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[n.id] || '') + '</svg>' +
-        '<span>' + n.label + '</span>' + (counts[n.id] ? '<span class="nav-count">' + counts[n.id] + '</span>' : '') + '</a>';
+        '<span>' + n.label + '</span></a>';
     }
     host.innerHTML =
       '<div class="side-brand"><span class="brand-mark">習</span>' +
@@ -333,9 +314,11 @@
   };
 
   /* ── 語音輸入（全站右下角；僅 UI 模擬，不串接語音 API） ─── */
-  var voice = { timer: null, sec: 0, onTask: null, target: null, listening: false, checked: [], date: null };
+  var voice = { timer: null, sec: 0, onTask: null, target: null, listening: false, checked: [], date: null, heard: '' };
   OD.MOCK_SPEECH = '今天線性代數讀完第三章，但是習題還沒做完。';
 
+  /* heard 有值就代表「已經辨識好了」：視窗一開就是文字那一步，不必再按停止。
+     FAB 按下去直接錄音（見下面的錄音鍵）之後，接手的就是這一條。 */
   OD.openVoice = function (opts) {
     opts = opts || {};
     voice.target = opts.target || null;
@@ -343,9 +326,12 @@
     voice.checked = [];
     voice.date = opts.date || OD.today;
     voice.sec = 0;
-    renderVoice(true);
+    voice.heard = opts.heard || '';
+    renderVoice(voice.heard ? 'text' : 'listen');
   };
-  function renderVoice(autoStart) {
+  /* mode：'listen' 從頭開始聽，'text' 直接跳到辨識完成那一步 */
+  function renderVoice(mode) {
+    if (mode === 'listen') voice.heard = '';
     var body =
       '<div class="rec"><span class="rec-dot"></span>' +
         '<div class="grow"><b id="vState">正在聆聽……</b><div class="meta" id="vTimer">00:00</div></div>' +
@@ -360,20 +346,10 @@
       body: body,
       foot: '<button class="btn btn-secondary" data-action="voice-restart">重新錄音</button>' +
             '<button class="btn btn-primary" data-action="voice-stop" id="vStop">停止並轉文字</button>',
-      onOpen: function () { if (autoStart) startRec(); else stopTicker(); }
+      onOpen: function () { if (mode === 'text') showTranscript(voice.heard); else startRec(); }
     });
-    OD.on('voice-restart', function () { renderVoice(true); });
-    OD.on('voice-stop', function () {
-      stopTicker();
-      var ta = OD.$('#vText'); if (ta) { ta.disabled = false; ta.value = OD.MOCK_SPEECH; }
-      var s = OD.$('#vState'); if (s) s.textContent = '辨識完成';
-      var t = OD.$('#vTimer'); if (t) t.textContent = '已停止';
-      renderVoiceSuggest();
-      var f = OD.$('.modal-foot'); if (!f) return;
-      f.innerHTML = (voice.target ? '<button class="btn btn-secondary" data-action="voice-restart">重新錄音</button>' : '') +
-        '<button class="btn btn-primary" id="vPrimary" data-action="' + (voice.target ? 'voice-fill' : 'voice-journal') + '">' +
-        voiceFootLabel() + '</button>';
-    });
+    OD.on('voice-restart', function () { renderVoice('listen'); });
+    OD.on('voice-stop', function () { showTranscript(OD.MOCK_SPEECH); });
     OD.on('voice-fill', function () {
       var v = OD.$('#vText').value, n = voiceCommitTasks();
       OD.closeModal();
@@ -403,6 +379,21 @@
       renderVoiceSuggest();
     });
   }
+  /* 辨識完成之後的那一步：文字放進可以編輯的框、依內容給任務建議、把底下那顆鈕
+     換成真正要做的事。在視窗裡按「停止並轉文字」與 FAB 錄完自動接手，走的都是
+     這裡，兩條路看到的結果一定一樣。 */
+  function showTranscript(text) {
+    stopTicker();
+    voice.heard = text || OD.MOCK_SPEECH;
+    var ta = OD.$('#vText'); if (ta) { ta.disabled = false; ta.value = voice.heard; }
+    var s = OD.$('#vState'); if (s) s.textContent = '辨識完成';
+    var t = OD.$('#vTimer'); if (t) t.textContent = '已停止';
+    renderVoiceSuggest();
+    var f = OD.$('.modal-foot'); if (!f) return;
+    f.innerHTML = (voice.target ? '<button class="btn btn-secondary" data-action="voice-restart">重新錄音</button>' : '') +
+      '<button class="btn btn-primary" id="vPrimary" data-action="' + (voice.target ? 'voice-fill' : 'voice-journal') + '">' +
+      voiceFootLabel() + '</button>';
+  }
   function voiceFootLabel() {
     var base = voice.target ? '放入文字框' : '加入日誌';
     return voice.checked.length ? '加入任務並' + base : base;
@@ -426,7 +417,8 @@
     return n;
   }
   function voiceSuggestions() {
-    var text = OD.MOCK_SPEECH || '', name = '', chapter = '';
+    /* 建議是從「剛剛聽到的內容」長出來的，不是從寫死的那一句 */
+    var text = voice.heard || OD.MOCK_SPEECH || '', name = '', chapter = '';
     (OD.db.subjects || []).forEach(function (s) { if (!name && s.name && text.indexOf(s.name) > -1) name = s.name; });
     var m = text.match(/第[一二三四五六七八九十0-9]+章/);
     if (m) chapter = m[0];
@@ -449,6 +441,9 @@
     wrap.hidden = false;
     updateVoicePrimary();
   }
+  function mmss(sec) {
+    return ('0' + Math.floor(sec / 60)).slice(-2) + ':' + ('0' + Math.floor(sec % 60)).slice(-2);
+  }
   function startRec() {
     stopTicker(); voice.sec = 0;
     var t = OD.$('#vTimer'), s = OD.$('#vState');
@@ -456,11 +451,61 @@
     if (t) t.textContent = '00:00';
     voice.timer = setInterval(function () {
       voice.sec++;
-      if (t) t.textContent = ('0' + Math.floor(voice.sec / 60)).slice(-2) + ':' + ('0' + voice.sec % 60).slice(-2);
+      if (t) t.textContent = mmss(voice.sec);
     }, 1000);
   }
   function stopTicker() { if (voice.timer) clearInterval(voice.timer); voice.timer = null; }
   function closeVoice() { stopTicker(); OD.closeModal(); }
+
+  /* ── 錄音鍵：FAB 按下去就開始錄，錄完自己接上語音輸入 ──────────
+     這裡仍是 UI 模擬，沒有真的開麥克風：辨識結果就是 OD.MOCK_SPEECH，
+     照著唸話的速度一個字一個字顯示出來，看起來像邊講邊出字。時間到了、
+     或再按一下，就停止並把文字交給語音輸入那一步——使用者不必先開視窗
+     再自己按一次停止。 */
+  var rec = { timer: null, ms: 0 };
+  function recNodes() {
+    return { host: OD.$('#voiceRoot'), time: OD.$('#fabRecTime'), text: OD.$('#fabRecText') };
+  }
+  /* 一句話唸完要多久：照字數估。太快像跳字，太慢讓人空等 */
+  function recTotal() { return Math.min(5200, Math.max(2400, (OD.MOCK_SPEECH || '').length * 160)); }
+  function recLabel(on) {
+    var b = OD.$('[data-od-id=voice-fab]'); if (!b) return;
+    b.setAttribute('aria-label', on ? '停止錄音' : '語音輸入');
+    b.setAttribute('title', on ? '停止錄音' : '語音輸入');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  function beginRec() {
+    var n = recNodes(); if (!n.host) return;
+    endRecTimer();
+    rec.ms = 0;
+    var total = recTotal(), full = OD.MOCK_SPEECH || '';
+    n.host.classList.add('is-rec');
+    recLabel(true);
+    if (n.time) n.time.textContent = '00:00';
+    if (n.text) n.text.textContent = '';
+    rec.timer = setInterval(function () {
+      rec.ms += 100;
+      if (n.time) n.time.textContent = mmss(rec.ms / 1000);
+      if (n.text) n.text.textContent = full.slice(0, Math.floor(rec.ms / total * full.length));
+      if (rec.ms >= total) finishRec();
+    }, 100);
+  }
+  function endRecTimer() { if (rec.timer) clearInterval(rec.timer); rec.timer = null; }
+  /* 停止錄音 → 直接接上語音輸入：辨識好的文字一起帶過去，視窗一開就是那一步 */
+  function finishRec() {
+    endRecTimer();
+    var n = recNodes();
+    if (n.host) n.host.classList.remove('is-rec');
+    if (n.text) n.text.textContent = '';
+    recLabel(false);
+    OD.openVoice({ heard: OD.MOCK_SPEECH });
+  }
+  function toggleRec() {
+    /* 跳出視窗的時候不錄：遮罩底下可能正開著一張填到一半的表單，
+       這時候接手過去會把它蓋掉。錄音只在乾淨的頁面上發生。 */
+    if (OD.$('.scrim')) return;
+    if (rec.timer) finishRec(); else beginRec();
+  }
 
   OD.addJournal = function (text, date) {
     if (!text) return;
@@ -474,12 +519,23 @@
     host.classList.add('fab-dock');
     var M = 12, down = false, moved = false, pid = null, sx = 0, sy = 0, ox = 0, oy = 0;
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(v, hi)); }
+    /* 手機時側欄是固定在底部的標籤列，語音鈕不能停在它後面 */
+    function bottomGap() {
+      var bar = OD.$('.sidebar'); if (!bar) return M;
+      if (getComputedStyle(bar).position !== 'fixed') return M;
+      var r = bar.getBoundingClientRect();
+      if (r.height <= 0 || r.top < window.innerHeight * 0.5) return M;
+      return (window.innerHeight - r.top) + M;
+    }
     function place(l, t) {
       var w = host.offsetWidth || 58, h = host.offsetHeight || 58;
+      var gap = bottomGap();
       l = clamp(l, M, Math.max(M, window.innerWidth - w - M));
-      t = clamp(t, M, Math.max(M, window.innerHeight - h - M));
+      t = clamp(t, M, Math.max(M, window.innerHeight - h - gap));
       host.style.left = l + 'px'; host.style.top = t + 'px';
       host.style.right = 'auto'; host.style.bottom = 'auto';
+      /* 鈕被拖到畫面上半部時，錄音面板改成往下長，不然會被視窗切掉 */
+      host.classList.toggle('is-rec-down', t < 140);
       return { left: Math.round(l), top: Math.round(t) };
     }
     function persist(p) { try { localStorage.setItem(FAB_KEY, JSON.stringify(p)); } catch (e) {} }
@@ -525,11 +581,19 @@
     if (host) {
       host.innerHTML =
         '<span class="fab-label">語音輸入</span>' +
-        '<button class="fab" data-action="voice-open" data-od-id="voice-fab" title="語音輸入" aria-label="語音輸入">' +
-          '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>';
+        /* 錄音時才從鈕旁邊長出來的小面板：計時、呼吸的紅點、邊講邊出的字 */
+        '<div class="fab-rec" id="fabRec" role="status" aria-live="polite">' +
+          '<span class="rec-dot" aria-hidden="true"></span>' +
+          '<span class="fab-rec-body"><b id="fabRecTime">00:00</b><span id="fabRecText"></span></span>' +
+        '</div>' +
+        '<button class="fab" data-action="voice-open" data-od-id="voice-fab" title="語音輸入" aria-label="語音輸入" aria-pressed="false">' +
+          '<svg class="ico ico-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>' +
+          '<svg class="ico ico-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7.5" y="7.5" width="9" height="9" rx="2" fill="currentColor"/></svg>' +
+        '</button>';
       initFab(host);
     }
-    OD.on('voice-open', function () { OD.openVoice(); });
+    /* 這顆鈕就是錄音鍵：按下去直接錄，錄完自己接語音輸入 */
+    OD.on('voice-open', toggleRec);
     OD.on('mic', function (el) { OD.openVoice({ target: el.getAttribute('data-target') || null }); });
   };
 

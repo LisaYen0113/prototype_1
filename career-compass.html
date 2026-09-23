@@ -72,11 +72,6 @@
   .nav-item .ico { width: 16px; height: 16px; flex: none; }
   .nav-item:hover { background: var(--fg-soft); color: var(--fg); }
   .nav-item[aria-current="page"] { background: var(--accent-soft); color: color-mix(in oklch, var(--accent) 68%, var(--fg)); font-weight: 600; }
-  .nav-count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
-  .nav-item[aria-current="page"] .nav-count { color: color-mix(in oklch, var(--accent) 68%, var(--fg)); }
-  .sidebar-foot { margin-top: auto; padding: 16px 18px 20px; border-top: 1px solid var(--border); }
-  .foot-num { font-family: var(--font-display); font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
-  .foot-num small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 3px; }
 
   .main { min-width: 0; display: flex; flex-direction: column; }
   .appbar { position: sticky; top: 0; z-index: 10; background: color-mix(in oklch, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -138,11 +133,6 @@
   .seg button:hover { color: var(--fg); }
   .seg button.is-active { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px oklch(18% 0.012 250 / .08); font-weight: 600; }
 
-  /* ── stats ─────────────────────────────────────────────────── */
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
-  .stat { display: flex; flex-direction: column; gap: 2px; }
-  .stat b { font-family: var(--font-display); font-size: 26px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-  .stat b small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 3px; }
 
   /* ── portfolio timeline ────────────────────────────────────── */
   .tl { display: flex; flex-direction: column; }
@@ -238,17 +228,68 @@
     .bcol { border-right: 0; border-bottom: 1px solid var(--border); min-height: 0; max-height: 300px; }
     .radar-wrap { grid-template-columns: 1fr; gap: 20px; }
   }
+  /* 手機：側欄不再是壓扁的桌機側欄。頁內視圖切換沉到拇指可及的底部標籤列，
+     跨模組連結升到最上面一條模組列；連結、事件與 aria-current 全部照舊。 */
   @media (max-width: 920px) {
-    .app { grid-template-columns: 1fr; }
-    .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; }
-    .brand { border-bottom: 0; padding: 4px 6px; }
-    .brand-text { display: none; }
-    .nav { flex-direction: row; padding: 0; gap: 2px; }
-    .nav-item { white-space: nowrap; padding: 8px 12px; }
-    .nav-count { display: none; }
-    .nav-group-label { display: none; }
-    .sidebar-foot { display: none; }
-    .appbar, .view { padding-inline: 18px; }
+    .app { display: block; }
+    .sidebar { display: contents; }
+    .brand, .nav-group-label { display: none; }
+
+    /* 跨模組連結：頂部模組列 */
+    .sidebar > .nav:not(#nav) {
+      flex-direction: row; gap: 6px; padding: 6px 16px;
+      overflow-x: auto; scrollbar-width: none;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .sidebar > .nav:not(#nav)::-webkit-scrollbar { display: none; }
+    /* width:auto 是必要的：桌機的 .nav-item 是 width:100%，不覆蓋的話
+       每個籤會撐滿一整列，模組列就變成五條 358px 的長條 */
+    .sidebar > .nav:not(#nav) .nav-item {
+      flex: none; width: auto; min-height: 44px; padding: 9px 13px; white-space: nowrap;
+      border: 1px solid var(--border); border-radius: 999px; font-size: 13px;
+    }
+    .sidebar > .nav:not(#nav) .nav-item .ico { width: 15px; height: 15px; }
+
+    /* 頁內視圖切換：固定底部標籤列 */
+    #nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      flex-direction: row; gap: 2px; padding: 6px 8px;
+      padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+      background: color-mix(in oklch, var(--surface) 92%, transparent);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -6px 20px oklch(18% 0.012 250 / .05);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    #nav::-webkit-scrollbar { display: none; }
+    #nav .nav-item {
+      position: relative; flex: 1 1 0; min-width: 0; width: auto; border: 0;
+      flex-direction: column; justify-content: center; gap: 3px;
+      min-height: 52px; padding: 6px 2px; border-radius: 11px;
+      font-size: 10.5px; line-height: 1.15; letter-spacing: -0.01em;
+      text-align: center; white-space: nowrap;
+    }
+    #nav .nav-item .ico { width: 21px; height: 21px; }
+    #nav .nav-item > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+    /* 標題一行、動作自成一行；明確換行才不會隨視窗寬度忽高忽低 */
+    .appbar { padding: 9px 16px; gap: 3px 12px; flex-wrap: wrap; }
+    .appbar > div:first-child { flex: 1 1 auto; min-width: 0; }
+    .appbar h1 { font-size: 18px; }
+    .appbar-actions { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .appbar-actions::-webkit-scrollbar { display: none; }
+    .appbar-actions:empty { display: none; }
+    .appbar-actions .btn { flex: none; white-space: nowrap; }
+    .view { padding: 16px 16px calc(146px + env(safe-area-inset-bottom, 0px)); }
+
+    /* 觸控目標補到 44px（WCAG 2.5.5） */
+    .btn-sm { min-height: 44px; }
+    .seg button { min-height: 44px; }
+    .flow { flex-wrap: nowrap; gap: 5px; }
+    .flow-sep { display: none; }
+    .flow-step { flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px; min-height: 44px; padding: 4px 7px; font-size: 11.5px; white-space: nowrap; }
+    .check { position: relative; }
+    .check::before { content: ''; position: absolute; inset: -11px; border-radius: 50%; }
   }
   @media (max-width: 560px) {
     .grid-2 { grid-template-columns: 1fr; }
@@ -273,15 +314,6 @@
     </nav>
     <p class="nav-group-label">歷程與探索</p>
     <nav class="nav" id="nav" data-od-id="nav" aria-label="歷程與探索"></nav>
-    <div class="sidebar-foot">
-      <div class="row-between"><span class="meta">目標</span><span class="meta">資工所筆試</span></div>
-      <div class="row-between" style="margin: 6px 0 8px;">
-        <span class="foot-num num" id="footDays">—<small>天</small></span>
-        <span class="meta num" id="footHours">—</span>
-      </div>
-      <div class="bar"><i id="footBar" style="width:0%"></i></div>
-      <p class="meta" style="margin-top:8px;">累積投入時數 / 預估需求</p>
-    </div>
   </aside>
 
   <main class="main">
@@ -509,29 +541,18 @@
     }).join('') + '</div>';
   }
   function renderNav() {
-    var counts = {
-      portfolio: ENTRIES.length + ' 筆',
-      diagnosis: COMPS.length + ' 向度',
-      map: allNodes().length + ' 節點',
-      career: CAREERS.length + ' 職涯'
-    };
     $('#nav').innerHTML = NAV.map(function (it) {
       return '<button class="nav-item" data-action="nav" data-view="' + it.id + '"' + (state.view === it.id ? ' aria-current="page"' : '') + '>' +
         '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + ICONS[it.id] + '</svg>' +
-        '<span>' + it.label + '</span><span class="nav-count">' + counts[it.id] + '</span></button>';
+        '<span>' + it.label + '</span></button>';
     }).join('');
-  }
-  function renderFoot() {
-    $('#footDays').innerHTML = PROFILE.days + '<small>天</small>';
-    $('#footHours').textContent = PROFILE.hoursUsed + ' / ' + PROFILE.hoursNeed + ' 小時';
-    $('#footBar').style.width = Math.round(PROFILE.hoursUsed / PROFILE.hoursNeed * 100) + '%';
   }
   function render(keepScroll) {
     var cfg = CFG[state.view] || CFG.portfolio;
     $('#pageTitle').textContent = cfg.title;
     $('#pageSub').textContent = cfg.sub;
     $('#appbarActions').innerHTML = cfg.actions;
-    renderNav(); renderFoot();
+    renderNav();
     var body = { portfolio: tplPortfolio, diagnosis: tplDiagnosis, map: tplMap, career: tplCareer }[state.view];
     $('#view').innerHTML = body();
     if (!keepScroll) window.scrollTo({ top: 0 });
@@ -539,9 +560,6 @@
   }
 
   /* ── 學習歷程 ─────────────────────────────────────────────── */
-  function stat(k, v, u, note) {
-    return '<div class="stat"><span class="meta">' + k + '</span><b class="num">' + v + (u ? '<small>' + u + '</small>' : '') + '</b><span class="meta">' + note + '</span></div>';
-  }
   function entryCard(e) {
     return '<button class="tl-card" data-action="p-open" data-id="' + e.id + '" data-od-id="entry-' + e.id + '">' +
       '<div class="row-between"><span class="row" style="gap:8px;min-width:0;">' +
@@ -557,7 +575,6 @@
   function tplPortfolio() {
     var list = ENTRIES.filter(function (e) { return state.pFilter === 'all' || e.type === state.pFilter; }).sort(byDate);
     var segs = [{ id: 'all', label: '全部' }].concat(Object.keys(PTYPES).map(function (k) { return { id: k, label: PTYPES[k] }; }));
-    var subjCount = {}; ENTRIES.forEach(function (e) { e.skills.forEach(function (s) { subjCount[s] = 1; }); });
     var groups = [];
     list.forEach(function (e) { var g = groups[groups.length - 1]; if (!g || g.date !== e.date) groups.push({ date: e.date, items: [e] }); else g.items.push(e); });
     return '<section class="view-section" data-od-id="view-portfolio">' + flowStrip() +
@@ -567,13 +584,7 @@
           '<p class="meta">' + PROFILE.school + '</p></div>' +
           '<div style="text-align:right;"><span class="meta">目標</span>' +
           '<p style="font-weight:600;margin:3px 0 2px;">' + PROFILE.goal + '</p>' +
-          '<p class="meta">' + PROFILE.targetLabel + ' · 剩餘 ' + PROFILE.days + ' 天</p></div>' +
-        '</div>' +
-        '<div class="stat-grid" style="margin-top:22px;padding-top:20px;border-top:1px solid var(--border);">' +
-          stat('累積讀書時數', PROFILE.hoursUsed, '小時', '近 8 週') +
-          stat('完成學習任務', '146', '項', '含練習與回想') +
-          stat('連續記錄天數', '23', '天', '自我調節歷程') +
-          stat('歷程紀錄', ENTRIES.length, '筆', subjCount ? Object.keys(subjCount).length + ' 項技能標籤' : '') +
+          '<p class="meta">' + PROFILE.targetLabel + '</p></div>' +
         '</div>' +
       '</div>' +
       '<div class="card" data-od-id="portfolio-timeline">' +

@@ -54,7 +54,6 @@
   };
   /* 成果類型 → 能力證據類型（新增成果若未帶 evidenceType 時回推） */
   var ACH_TYPE = { course: '課程成果', project: '專題', contest: '競賽', intern: '實習', activity: '活動', cert: '證照', other: '其他' };
-  var TYPE_ORDER = ['課程', '課程成果', '專題', '競賽', '實習', '活動', '學習紀錄', 'AI 學習紀錄'];
 
   function dirById(id) { return db.careerDirections.filter(function (d) { return d.id === id; })[0]; }
   function achById(id) { return db.achievements.filter(function (a) { return a.id === id; })[0]; }
@@ -78,7 +77,6 @@
     evOf(sid).forEach(function (e) { e.items.forEach(function (it) { if (!seen[it]) { seen[it] = 1; out.push(it); } }); });
     return out;
   }
-  function withEvidence() { return db.skills.filter(function (s) { return countOf(s.id) > 0; }).length; }
   function card(title, sub, body, actions) {
     return '<section class="card" data-od-id="' + OD.slug(title) + '" style="margin-top:0"><div class="card-head"><div><div class="card-title">' + title + '</div>' +
       (sub ? '<div class="card-sub">' + sub + '</div>' : '') + '</div>' + (actions || '') + '</div>' + body + '</section>';
@@ -92,57 +90,17 @@
   function render() {
     OD.$('#content').innerHTML =
       '<div style="margin-bottom:16px">' + OD.flowStrip('diagnosis') + '</div>' +
-      '<div style="margin-bottom:16px">' + introCol() + '</div>' +
-      '<div style="margin-bottom:16px">' + distributionCol() + '</div>' +
       '<div style="margin-bottom:16px">' + skillCards() + '</div>' +
       ctaCol();
   }
 
-  /* ── 說明 + 查看能力證據 ─────────────────────────────── */
-  function introCol() {
-    return card('診斷依據',
-      '依據你的修課、課程成果、專題、競賽、實習與學習紀錄，整理目前已累積的能力證據。',
-      '<div class="avoid-note">' + ICO.spark + '每一項能力都對應到至少一筆學習證據，可展開查看證據與對應的能力項目。</div>' +
-      '<button class="btn btn-secondary" data-action="goto-evidence" style="width:100%;justify-content:center;margin-top:12px">查看能力證據</button>');
-  }
-
-  /* ── 能力證據分布 + 能力證據覆蓋度 ───────────────────── */
-  function distributionCol() {
-    var max = 0;
-    db.skills.forEach(function (s) { var n = countOf(s.id); if (n > max) max = n; });
-    var rows = db.skills.map(function (s) {
-      var n = countOf(s.id);
-      var byType = {};
-      db.skillEvidence.filter(function (e) { return e.skillId === s.id; }).forEach(function (e) { var t = typeOf(e); byType[t] = (byType[t] || 0) + 1; });
-      var chips = TYPE_ORDER.filter(function (t) { return byType[t]; }).map(function (t) {
-        return '<span class="tag tag-plain">' + OD.esc(t) + ' ' + byType[t] + '</span>';
-      }).join('');
-      return '<div class="lrow">' +
-        '<span class="row" style="gap:10px;min-width:0;flex:1 1 auto">' +
-          '<b style="font-size:13px;min-width:60px">' + OD.esc(s.name) + '</b>' +
-          '<span class="mini-bar" style="flex:1 1 auto;max-width:200px"><span class="bar"><i style="width:' + (max ? Math.round(n / max * 100) : 0) + '%"></i></span><span class="n num">' + n + ' 筆</span></span>' +
-        '</span>' +
-        '<span class="chip-set" style="justify-content:flex-end">' + chips + '</span>' +
-      '</div>';
-    }).join('');
-    var cov = withEvidence();
-    var head =
-      '<div class="grid-2" style="align-items:center;margin-bottom:8px">' +
-        '<div><div class="section-title" style="margin:0">能力證據覆蓋度</div>' +
-          '<div class="meta" style="margin-top:5px">' + db.skills.length + ' 項能力中已有 <b class="num">' + cov + '</b> 項累積能力證據，共 <b class="num">' + db.skillEvidence.length + '</b> 筆。</div></div>' +
-        '<div style="text-align:right"><span class="num" style="font-size:26px;font-weight:650">' + cov + ' / ' + db.skills.length + '</span><div class="meta">已建立能力證據的能力項目</div></div>' +
-      '</div>';
-    return card('能力證據分布', '依目前已累積的能力證據筆數整理，呈現的是證據累積情形，非能力強弱評分', head + '<div class="stack-sm">' + rows + '</div>');
-  }
-
-  /* ── 能力卡片：證據數量 / 可確認項目 / 尚未建立證據 ──── */
+  /* ── 能力卡片：證據數量 / 可確認項目 ──────────────────── */
   function skillCards() {
     var blocks = db.skills.map(function (s) {
       var ev = evOf(s.id);
       var apps = (APPLY[s.name] || []).map(function (id) { var d = dirById(id); return d ? '<span class="apply-chip">' + OD.esc(d.name) + '</span>' : ''; }).join('');
       var conf = confirmedOf(s.id);
       var confChips = conf.length ? conf.map(function (it) { return '<span class="tag tag-plain">' + OD.esc(it) + '</span>'; }).join('') : '<span class="meta">尚未建立可確認的能力項目</span>';
-      var openChips = (s.open || []).length ? s.open.map(function (it) { return '<span class="tag">' + OD.esc(it) + '</span>'; }).join('') : '<span class="meta">目前皆已累積能力證據</span>';
       var rows = ev.length ? ev.map(function (e) {
         var items = e.items.length ? e.items.map(function (it) { return '<span class="tag tag-plain">' + OD.esc(it) + '</span>'; }).join('') : (e.note ? '<span class="tag tag-plain">' + OD.esc(e.note) + '</span>' : '');
         return '<div class="ev-row">' +
@@ -167,8 +125,6 @@
         (apps ? '<div class="row" style="gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap"><span class="mini">相關職涯方向</span><div class="chip-set">' + apps + '</div></div>' : '') +
         '<div class="section-title" style="margin:14px 0 6px">目前可確認的能力項目</div>' +
         '<div class="chip-set">' + confChips + '</div>' +
-        '<div class="section-title" style="margin:14px 0 6px">尚未建立證據</div>' +
-        '<div class="chip-set">' + openChips + '</div>' +
         '<div class="section-title" style="margin:16px 0 0">能力證據（' + ev.length + '）</div>' +
         '<div class="ev-list">' + rows + '</div>' +
       '</section>';
@@ -190,11 +146,6 @@
     cardEl.classList.toggle('is-open', open);
     el.setAttribute('aria-expanded', open ? 'true' : 'false');
     OD.$$('.ev-items', cardEl).forEach(function (n) { n.hidden = !open; });
-  });
-
-  OD.on('goto-evidence', function () {
-    var el = OD.$('[data-od-id="skill-evidence"]');
-    if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - 90), behavior: 'smooth' });
   });
 
   render();
